@@ -3,6 +3,10 @@
 //
 module;
 #include <string>
+#include <fmt/format.h>
+#include <vector>
+#include <set>
+
 export module cxc;
 
 using namespace std;
@@ -11,12 +15,76 @@ namespace cxc {
     export typedef struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool is_version_logs=true;//if open version logs.
-        string app_version;
+        char argument_mark;//-[argument_mark] mark as argument
+        string app_version;//your app's version
     } ParserConfig;
 
     export typedef struct Log{
 
     } Log;
+
+    class Option{
+    private:
+        string name;
+        string describe;
+        char abbreviation;
+        int number;
+    public:
+        Option(string name,string describe,int number,char abbreviation):
+            name(name),describe(describe),number(number),abbreviation(abbreviation)
+        {}
+    };
+    class Argument{
+    private:
+        string action_name;
+        string argument_type;
+        string describe;
+    public:
+        Argument(string action_name,string argument_type,string describe):
+            action_name(action_name),argument_type(argument_type),describe(describe)
+        {}
+    };
+    class Value{
+    private:
+        string value_name;
+        string log;
+        string value_type;
+        string describe;
+        string default_value;
+        bool is_default;
+    public:
+        Value(string value_name,string log,string value_type,string describe):
+                value_name(value_name),log(log),value_type(value_type),describe(describe),is_default(false)
+        {}
+        Value(string value_name,string log,string value_type,string describe,string default_value):
+            value_name(value_name),log(log),value_type(value_type),describe(describe),default_value(default_value),is_default(true)
+        {}
+    };
+    class Action{
+    private:
+        string name;
+        string describe;
+        char abbreviation;
+        vector<Option> options;
+        vector<Value> values;
+    public:
+        Action(string name,string describe,char abbreviation):
+            name(name),describe(describe),abbreviation(abbreviation){}
+        Action* addOption(string option_name,string describe,int number,char abbreviation=NULL){
+            this->options.push_back(Option(option_name,describe,number,abbreviation));
+            return this;
+        }
+
+        //add value
+        Action* addValue(string value_name,string log,string value_type,string describe){
+            this->values.push_back(Value(value_name,log,value_type,describe));
+            return this;
+        }
+        Action* addValue(string value_name,string log,string value_type,string describe,string default_value){
+            this->values.push_back(Value(value_name,log,value_type,describe,default_value));
+            return this;
+        }
+    };
 
     export class Parser{
     public:
@@ -26,30 +94,45 @@ namespace cxc {
         Log *log= nullptr;
         bool is_def_hp = true;//if open default function
         help_fun hp;
+        vector<Action*> actions;
+        set<Argument*> arguments;
     public:
-        Parser(int argc,char** argv){
+        Parser(){
             this->config = new ParserConfig;
             this->log = new Log;
         }
-        Parser(int argc,char** argv,ParserConfig &p,Log* log):
+        Parser(ParserConfig &p,Log* log):
             log(log){
             *(this->config) = p;
         }
-        Parser(int argc,char** argv,ParserConfig *p,Log& log):
+        Parser(ParserConfig *p,Log& log):
             config(p){
             *(this->log) = log;
         }
-        Parser(int argc,char** argv,ParserConfig &p,Log& log){
+        Parser(ParserConfig &p,Log& log){
             *(this->config) = p;
             *(this->log) = log;
         }
-        Parser(int argc,char** argv,ParserConfig *p,Log* log):
+        Parser(ParserConfig *p,Log* log):
             config(p),log(log){}
 
         ~Parser(){
             if(this->config != nullptr){
                 delete this->config;
                 this->config = nullptr;
+            }
+            for(auto& e:this->actions){
+                if(e!=nullptr){
+                    delete e;
+                    e= nullptr;
+                    auto a=10;
+                }
+            }
+            if(!this->arguments.empty()){
+                for(auto e:this->arguments){
+                    delete e;
+                }
+                this->arguments.clear();
             }
         }
         void defaultConfig(){
@@ -68,7 +151,6 @@ namespace cxc {
                 delete this->log;
             this->log=log;
         }
-
         //over config
         void loadConfig(ParserConfig &p){
             *(this->config)=p;
@@ -84,16 +166,19 @@ namespace cxc {
         void exportConfig(string& path){}
         void exportConfig(string& path,string& name){}
         //add an action
-        void addAction(string action_name,string describe,char abbreviation=NULL){}
-        //add an option
-        void addOption(string option_name,string describe,char abbreviation=NULL){
-
+        Action* addAction(string action_name,string describe,char abbreviation=NULL){
+            Action *action =new Action(action_name,describe,abbreviation);
+            this->actions.push_back(action);
+            return action;
         }
         //add an argument
-        void addArgument(string action_name,string argument_type,string describe){}
-        //add value
-        void addValue(string value_name,string log,string value_type,string describe){}
-        void addValue(string value_name,string log,string value_type,string describe,string default_value){}
+        Parser* addArgument(string argument_name,string argument_type,string describe){
+            Argument *argument =new Argument(argument_name,argument_type,describe);
+            this->arguments.insert(argument);
+            return this;
+        }
+        //get and set function
+
         //set help function
         void setHelp(help_fun &hp){
             this->is_def_hp= false;
