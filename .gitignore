@@ -1,0 +1,8 @@
+#忽略构建文件及其他缓存文件
+**/build/
+**/cmake-build-debug/
+**/cmake-build-release/
+**/.xmake/
+**/.idea/
+**/.vs/
+
