@@ -1,7 +1,9 @@
+#include <vector>
 #include <iostream>
 import coc;
+using namespace std;
 
-void test(coc::Options* o,coc::Arguments* a,coc::Values* v){
+void test(coc::Options* o,coc::Arguments* a,coc::Values* v,vector<string>& s){
 
 }
 
