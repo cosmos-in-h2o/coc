@@ -3,14 +3,18 @@ module;
 #include <vector>
 #include <set>
 #include <map>
+#include <iostream>
 
-export module cxc;
-#define CXC_DEBUG
+export module coc;
+
 using namespace std;
 
-namespace cxc {
+namespace coc {
+    export class Options;
+    export class Arguments;
+    export class Values;
+
     //options,values,argv
-    export typedef void (*action_fun)(vector<int>&,vector<string>&,vector<string>&);
     export typedef struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool is_version_logs=true;//if open version logs.
@@ -18,22 +22,32 @@ namespace cxc {
         string logo_and_version;//your app's version
         char argument_mark;//-[argument_mark] mark as argument
     } ParserConfig;
+    export typedef void (*action_fun)(Options*,Arguments*,Values*,vector<string>&);
 
     export typedef struct Log{
         const char* not_found_argument="Error:Not found argument:%s.";
     } Log;
 
-    class Option{
+    class Options{
+        friend class Action;
     private:
-        string name;
-        string describe;
-        char abbreviation;
-        int number;
+        typedef struct Option{
+            string name;
+            string describe;
+            int number;
+            char short_cut;
+        } Option;
+        vector<Option*> options;
+        vector<int> numbers;
     public:
-        Option(string name,string describe,int number,char abbreviation):
-            name(name),describe(describe),number(number),abbreviation(abbreviation)
-        {}
+        inline int at(int index){
+            if(index>=this->numbers.size()){
+                return -1;
+            }
+            return this->numbers[index];
+        }
     };
+
     class Arguments{
         friend class Parser;
     private:
@@ -66,7 +80,7 @@ namespace cxc {
             Argument* argument = new Argument(argument_type,describe,default_value);
             this->arguments[argument_name]=argument;
         }
-        void addUsrArg(string key,string value){
+        void addArgU(string key,string value){
             auto p=this->arguments.find(key);
             if(p!=this->arguments.end()){
                 this->usr_arguments[key]=value;
@@ -100,64 +114,112 @@ namespace cxc {
             return 0;
         }
     };
-    class ArgumentsGetter{
+
+    class Values{
+        friend class Action;
     private:
-        map<string,string> arguments;
+        typedef struct Value{
+            string value_name;
+            string log;
+            string value_type;
+            string describe;
+            string default_value;
+            bool is_default;
+        } Value;
+        vector<Value*> values;
+        map<string,string> values_u;
     public:
-        char getChar(string argument_name){
-            return '0';
-        }
-        string getString(string argument_name){
-            return "0";
-        }
-        int getInt(string argument_name){
-            return 0;
-        }
-        bool getBool(string argument_name){
-            return 0;
-        }
+
     };
-    class Value{
-    private:
-        string value_name;
-        string log;
-        string value_type;
-        string describe;
-        string default_value;
-        bool is_default;
-    public:
-        Value(string value_name,string log,string value_type,string describe):
-                value_name(value_name),log(log),value_type(value_type),describe(describe),is_default(false)
-        {}
-        Value(string value_name,string log,string value_type,string describe,string default_value):
-            value_name(value_name),log(log),value_type(value_type),describe(describe),default_value(default_value),is_default(true)
-        {}
-    };
+
     class Action{
+        friend class Actions;
     private:
-        string name;
         string describe;
-        char abbreviation;
         action_fun af;
-        vector<Option> options;
-        vector<Value> values;
+        char short_cut;
+        Options* options;
+        Values* values;
+
+        int run(string& option,vector<string>& argv, Arguments *arguments){
+            if(option[1] == '-'){
+                for(auto p:this->options->options){
+                    if(p->name == option.substr(2, option.size() - 2)){
+                        this->options->numbers.push_back(p->number);
+                        break;
+                    }
+                }
+            }
+            else{
+                int i=0;
+                for(auto p:this->options->options){
+                    if(p->short_cut == option[i]) {
+                        this->options->numbers.push_back(p->number);
+                        i++;
+                    }
+                }
+            }
+            string buff;
+            for(auto p:this->values->values){
+                buff="";
+                cout<<p->log;
+                cin>>buff;
+                if(buff==""){
+                    if(p->is_default){
+                        this->values->values_u[p->value_name]=p->default_value;
+                    }
+                    else{
+                        //error
+                        return -1;
+                    }
+                }
+                else{
+                    this->values->values_u[p->value_name]=buff;
+                }
+            }
+
+            this->af(this->options,arguments,this->values,argv);
+        }
     public:
-        Action(string name,string describe,action_fun af,char abbreviation):
-            name(name),describe(describe),af(af),abbreviation(abbreviation)
+        Action(string& describe,action_fun& af,char short_cut):
+            describe(describe),af(af),short_cut(short_cut)
         {}
-        Action* addOption(string option_name,string describe,int number,char abbreviation=NULL){
-            this->options.push_back(Option(option_name,describe,number,abbreviation));
+
+        inline Action* addOption(string name,string describe,int number,char short_cut=NULL){
+            this->options->options.push_back(new Options::Option(name,describe,number,short_cut));
             return this;
         }
 
-        //add value
-        Action* addValue(string value_name,string log,string value_type,string describe){
-            this->values.push_back(Value(value_name,log,value_type,describe));
+        inline Action* addValue(string value_name,string log,string value_type,string describe,string default_value){
+            this->values->values.push_back(new Values::Value(value_name,log,value_type,describe,default_value,true));
             return this;
         }
-        Action* addValue(string value_name,string log,string value_type,string describe,string default_value){
-            this->values.push_back(Value(value_name,log,value_type,describe,default_value));
+
+        inline Action* addValue(string& value_name,string log,string value_type,string describe){
+            this->values->values.push_back(new Values::Value(value_name,log,value_type,describe,"", false));
             return this;
+        }
+    };
+
+    class Actions{
+        friend class Parser;
+    private:
+        //an action with name,des,abb and af
+
+        map<string, Action*> actions;
+        //if error,the function will return false
+        inline int run(string action_name,string& option,vector<string>& argv,Arguments *arguments) {
+            auto p = this->actions.find(action_name);
+            if (p == this->actions.end())
+                return -1;
+            return p->second->run(option,argv,arguments);
+        }
+    public:
+        //add an action
+        inline Action* addAction(string action_name,string describe,action_fun af,char short_cut=NULL){
+            auto p =new Action(describe,af,short_cut);
+            this->actions[action_name]=p;
+            return p;
         }
     };
 
@@ -169,8 +231,14 @@ namespace cxc {
         Log *log= nullptr;
         bool is_def_hp = true;//if open default function
         help_fun hp;
-        vector<Action*> actions;
-        Arguments* arguments;
+        Actions *actions;
+        Arguments *arguments;
+        void help(){
+            if(!this->is_def_hp){
+                this->hp(this);
+                return;
+            }
+        }
     public:
         Parser(){
             this->config = new ParserConfig;
@@ -193,20 +261,7 @@ namespace cxc {
         {}
 
         ~Parser(){
-            if(this->config != nullptr){
-                delete this->config;
-                this->config = nullptr;
-            }
-            if(this->arguments!= nullptr){
-                delete this->arguments;
-                this->arguments= nullptr;
-            }
-            for(auto& e:this->actions){
-                if(e!=nullptr){
-                    delete e;
-                    e= nullptr;
-                }
-            }
+
         }
         void defaultConfig(){
             if(this->config!= nullptr)
@@ -233,37 +288,52 @@ namespace cxc {
                 delete this->config;
             this->config=p;
         }
-        //load config from file
-        void loadConfig(string &path){}
-        //export config file
-        void exportConfig(string& path){}
-        void exportConfig(string& path,string& name){}
-        //add an action
-        Action* addAction(string action_name,string describe,action_fun af,char abbreviation=NULL){
-            Action *action =new Action(action_name,describe,af,abbreviation);
-            this->actions.push_back(action);
-            return action;
-        }
-        //add an argument
-        Parser* addArgument(string argument_name,string argument_type,string describe){
-            this->arguments->add(argument_name,argument_type,describe);
-            return this;
-        }
-        //get and set function
 
+        //get and set function
+        inline ParserConfig *getConfig(){
+            return this->config;
+        }
+
+        inline Log* getLog(){
+            return this->log;
+        }
+
+        inline Actions* getActions(){
+            return this->actions;
+        }
         //set help function
         void setHelp(help_fun &hp){
             this->is_def_hp= false;
             this->hp=hp;
         }
-        void help(){
-            if(!this->is_def_hp){
-                this->hp(this);
-                return;
-            }
-        }
+
         int run(int argc,char** argv) {
-            return 0;
+            vector<string> argv_v(10);
+            string option;
+            for(int i=1;i<argc;i++){
+                if(argv[i][0]=='-'){
+                    if(argv[i][1]==this->config->argument_mark)
+                    {
+                        string key="";
+                        string value="";
+                        int ptr=2;
+                        for(; argv[i][ptr] != '='; ptr++){
+                            key.push_back(argv[i][ptr]);
+                        }
+                        ++ptr;
+                        for(;argv[i][ptr]!='\0';ptr++){
+                            value.push_back(argv[i][ptr]);
+                        }
+                        this->arguments->addArgU(key,value);
+                    }
+                    else {
+                        option=argv[i];
+                    }
+                    continue;
+                }
+                argv_v.emplace_back(argv[i]);
+            }
+            return this->actions->run(argv[1],option,argv_v,this->arguments);
         }
     };
 }

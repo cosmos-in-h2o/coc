@@ -1,11 +1,16 @@
 #include <iostream>
-import cxc;
+import coc;
+
+void test(coc::Options* o,coc::Arguments* a,coc::Values* v){
+
+}
+
 int main(int argc,char** argv) {
-    cxc::ParserConfig config;
-    config.app_version="1.0.0";
-    cxc::Log log;
-    cxc::Parser parser;
-    parser.loadConfig(&config);
-    parser.loadLog(&log);
+
+    coc::Parser parser;
+    parser.getConfig()->logo_and_version="1.0.0";
+    parser.getLog()->not_found_argument="some string";
+    parser.getActions()->addAction(" "," ",test,'0');
+
     return parser.run(argc,argv);
 }
