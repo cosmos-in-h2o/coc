@@ -1,26 +1,26 @@
-//
-// Created by dream on 4/16/23.
-//
 module;
 #include <string>
-#include <fmt/format.h>
 #include <vector>
 #include <set>
+#include <map>
 
 export module cxc;
-
+#define CXC_DEBUG
 using namespace std;
 
 namespace cxc {
+    //options,values,argv
+    export typedef void (*action_fun)(vector<int>&,vector<string>&,vector<string>&);
     export typedef struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool is_version_logs=true;//if open version logs.
+        bool intellisense=true;//not supported now
+        string logo_and_version;//your app's version
         char argument_mark;//-[argument_mark] mark as argument
-        string app_version;//your app's version
     } ParserConfig;
 
     export typedef struct Log{
-
+        const char* not_found_argument="Error:Not found argument:%s.";
     } Log;
 
     class Option{
@@ -34,15 +34,88 @@ namespace cxc {
             name(name),describe(describe),number(number),abbreviation(abbreviation)
         {}
     };
-    class Argument{
+    class Arguments{
+        friend class Parser;
     private:
-        string action_name;
-        string argument_type;
-        string describe;
+        class Argument{
+            friend class Arguments;
+        private:
+            string argument_type;
+            string describe;
+            string default_value;
+            bool is_default;
+        public:
+            Argument(string argument_type,string describe):
+                    argument_type(argument_type),describe(describe),is_default(false)
+            {}
+            Argument(string argument_type,string describe,string default_value):
+                    argument_type(argument_type),describe(describe),default_value(default_value),is_default(true)
+            {}
+        };
+        Log* log;
+        map<string,Argument*> arguments;
+        map<string,string> usr_arguments;
+        Arguments(Log* log){
+            this->log=log;
+        }
+        inline void add(string argument_name,string argument_type,string describe){
+            Argument* argument = new Argument(argument_type,describe);
+            this->arguments[argument_name]=argument;
+        }
+        inline void add(string argument_name,string argument_type,string describe,string default_value){
+            Argument* argument = new Argument(argument_type,describe,default_value);
+            this->arguments[argument_name]=argument;
+        }
+        void addUsrArg(string key,string value){
+            auto p=this->arguments.find(key);
+            if(p!=this->arguments.end()){
+                this->usr_arguments[key]=value;
+            }
+            else{
+                printf(log->not_found_argument,key.c_str());
+            }
+        }
     public:
-        Argument(string action_name,string argument_type,string describe):
-            action_name(action_name),argument_type(argument_type),describe(describe)
-        {}
+        char getChar(string argument_name){
+            auto p=this->arguments.find(argument_name);
+#ifdef CXC_DEBUG
+            if(p==this->arguments.end()){
+                printf("CodeError:Not found:%s.",argument_name.c_str());
+                return 0;
+            }
+            if(p->second->argument_type!="char"){
+                printf("CodeError:Is not char type.\tcxc.ixx:line 87.");
+            }
+#endif
+            
+            return '0';
+        }
+        string getString(string argument_name){
+            return "0";
+        }
+        int getInt(string argument_name){
+            return 0;
+        }
+        bool getBool(string argument_name){
+            return 0;
+        }
+    };
+    class ArgumentsGetter{
+    private:
+        map<string,string> arguments;
+    public:
+        char getChar(string argument_name){
+            return '0';
+        }
+        string getString(string argument_name){
+            return "0";
+        }
+        int getInt(string argument_name){
+            return 0;
+        }
+        bool getBool(string argument_name){
+            return 0;
+        }
     };
     class Value{
     private:
@@ -65,11 +138,13 @@ namespace cxc {
         string name;
         string describe;
         char abbreviation;
+        action_fun af;
         vector<Option> options;
         vector<Value> values;
     public:
-        Action(string name,string describe,char abbreviation):
-            name(name),describe(describe),abbreviation(abbreviation){}
+        Action(string name,string describe,action_fun af,char abbreviation):
+            name(name),describe(describe),af(af),abbreviation(abbreviation)
+        {}
         Action* addOption(string option_name,string describe,int number,char abbreviation=NULL){
             this->options.push_back(Option(option_name,describe,number,abbreviation));
             return this;
@@ -95,7 +170,7 @@ namespace cxc {
         bool is_def_hp = true;//if open default function
         help_fun hp;
         vector<Action*> actions;
-        set<Argument*> arguments;
+        Arguments* arguments;
     public:
         Parser(){
             this->config = new ParserConfig;
@@ -114,25 +189,23 @@ namespace cxc {
             *(this->log) = log;
         }
         Parser(ParserConfig *p,Log* log):
-            config(p),log(log){}
+            config(p),log(log)
+        {}
 
         ~Parser(){
             if(this->config != nullptr){
                 delete this->config;
                 this->config = nullptr;
             }
+            if(this->arguments!= nullptr){
+                delete this->arguments;
+                this->arguments= nullptr;
+            }
             for(auto& e:this->actions){
                 if(e!=nullptr){
                     delete e;
                     e= nullptr;
-                    auto a=10;
                 }
-            }
-            if(!this->arguments.empty()){
-                for(auto e:this->arguments){
-                    delete e;
-                }
-                this->arguments.clear();
             }
         }
         void defaultConfig(){
@@ -166,15 +239,14 @@ namespace cxc {
         void exportConfig(string& path){}
         void exportConfig(string& path,string& name){}
         //add an action
-        Action* addAction(string action_name,string describe,char abbreviation=NULL){
-            Action *action =new Action(action_name,describe,abbreviation);
+        Action* addAction(string action_name,string describe,action_fun af,char abbreviation=NULL){
+            Action *action =new Action(action_name,describe,af,abbreviation);
             this->actions.push_back(action);
             return action;
         }
         //add an argument
         Parser* addArgument(string argument_name,string argument_type,string describe){
-            Argument *argument =new Argument(argument_name,argument_type,describe);
-            this->arguments.insert(argument);
+            this->arguments->add(argument_name,argument_type,describe);
             return this;
         }
         //get and set function
@@ -194,5 +266,4 @@ namespace cxc {
             return 0;
         }
     };
-
 }
