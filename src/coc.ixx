@@ -20,8 +20,16 @@ namespace coc {
         bool is_version_logs=true;//if open version logs.
         bool intellisense=true;//not supported now
         bool is_global_action=true;
-        string logo_and_version;//your app's version
-        char argument_mark;//-[argument_mark] mark as argument
+        string logo_and_version=
+                "coc v1.0.0\n"
+                "\t  ____ ___   ____ \n"
+                "\t / ___/ _ \\ / ___|\n"
+                "\t| |  | | | | |    \n"
+                "\t| |__| |_| | |___ \n"
+                "\t \\____\\___/ \\____|\n"
+                "\t\t\tcoc by dream727\n"
+                "==> https://github.com/dream727/coc";//your app's version
+        char argument_mark='D';//-[argument_mark] mark as argument
     } ParserConfig;
 
     export class Log{
@@ -50,6 +58,13 @@ namespace coc {
         Options(ParserConfig* config,Log* log):
             config(config),log(log)
         {}
+
+        ~Options(){
+            for(auto& p:this->options){
+                delete p;
+                p=nullptr;
+            }
+        }
 
         vector<Option*> options;
         vector<int> options_u;
@@ -130,6 +145,13 @@ namespace coc {
         Arguments(Log* log){
             this->log=log;
         }
+
+        ~Arguments(){
+            for(auto& p:this->arguments){
+                delete p.second;
+                p.second= nullptr;
+            }
+        }
         //add an argument to list
         inline void addArgument(const string& argument_name,const string& argument_type,const string& describe,const string &default_value=""){
             this->arguments[argument_name]=new Argument(argument_type,describe,default_value);
@@ -185,6 +207,13 @@ namespace coc {
         } Value;
         vector<Value*> values;
         map<string,string> values_u;
+        ~Values(){
+            for(auto&p:values){
+                delete p;
+                p= nullptr;
+            }
+        }
+
         //add a value to list
         inline void addValue(string& value_name,string& log,string& value_type,string& describe,string& default_value){
             this->values.push_back(new Values::Value(value_name,log,value_type,describe,default_value));
@@ -229,14 +258,18 @@ namespace coc {
             for(auto&iter:option) {options->addOptionsU(iter);}
             if(!this->options->checkout()) return -1;
             if(!this->values->log()) return -1;
-
             this->af(this->options,arguments,this->values,argv);
         }
     public:
         Action(string& describe,action_fun& af,char short_cut):
             describe(describe),af(af),short_cut(short_cut)
         {}
-
+        ~Action(){
+            delete this->options;
+            this->options=nullptr;
+            delete this->values;
+            this->values=nullptr;
+        }
         inline Action* addOption(string& name,string &describe,int number,char short_cut=NULL){
             this->options->addOption(name,describe,number,short_cut);
             return this;
@@ -267,6 +300,14 @@ namespace coc {
             return this->actions[action_name]->run(options,argv,arguments);
         }
     public:
+        ~Actions(){
+            for(auto&p:this->actions){
+                delete p.second;
+                p.second= nullptr;
+            }
+            delete this->global;
+            this->global=nullptr;
+        }
         inline Action* get_global(){
             if(this->config->is_global_action)
                 return this->global;
@@ -318,7 +359,14 @@ namespace coc {
         {}
 
         ~Parser(){
-
+            delete this->config;
+            this->config= nullptr;
+            delete this->log;
+            this->log=nullptr;
+            delete this->actions;
+            this->actions=nullptr;
+            delete this->arguments;
+            this->arguments=nullptr;
         }
         void defaultConfig(){
             if(this->config!= nullptr)
@@ -332,8 +380,7 @@ namespace coc {
             *(this->log)=log;
         }
         void loadLog(Log* log){
-            if(this->log!= nullptr)
-                delete this->log;
+            delete this->log;
             this->log=log;
         }
         //over config
@@ -341,8 +388,7 @@ namespace coc {
             *(this->config)=p;
         }
         void loadConfig(ParserConfig *p){
-            if(this->config!= nullptr)
-                delete this->config;
+            delete this->config;
             this->config=p;
         }
         //only package with a layer
