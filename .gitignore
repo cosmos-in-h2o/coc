@@ -5,4 +5,6 @@
 **/.xmake/
 **/.idea/
 **/.vs/
-
+**/.vscode/
+**/.cache/
+./.clang-tidy
