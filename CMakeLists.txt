@@ -3,7 +3,7 @@
 # do not edit by hand.
 
 # project
-cmake_minimum_required(VERSION 3.15.0)
+cmake_minimum_required(VERSION 3.25.0)
 cmake_policy(SET CMP0091 NEW)
 project(coc LANGUAGES CXX C)
 
