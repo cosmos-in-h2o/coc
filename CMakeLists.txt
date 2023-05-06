@@ -3,14 +3,15 @@
 # do not edit by hand.
 
 # project
-cmake_minimum_required(VERSION 3.25.0)
+cmake_minimum_required(VERSION 3.15.0)
 cmake_policy(SET CMP0091 NEW)
 project(coc LANGUAGES CXX C)
+
 # target
 add_executable(coc "" src/coc.ixx)
 set_target_properties(coc PROPERTIES OUTPUT_NAME "coc")
 set_target_properties(coc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/linux/x86_64/release")
-add_custom_command(OUTPUT output_coc_9624AB5E
+add_custom_command(OUTPUT output_coc_9344C036
     COMMAND echo [  0%]: compiling.module.release coc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/build/.objs/coc/linux/x86_64/release/src
     COMMAND /usr/bin/gcc -m64 -x c++ -c ${CMAKE_SOURCE_DIR}/src/coc.ixx -o ${CMAKE_SOURCE_DIR}/build/.objs/coc/linux/x86_64/release/src/coc.ixx.o
@@ -19,10 +20,10 @@ add_custom_command(OUTPUT output_coc_9624AB5E
     COMMAND /usr/bin/gcc -m64 -x c++ -c ${CMAKE_SOURCE_DIR}/src/main.cpp -o ${CMAKE_SOURCE_DIR}/build/.objs/coc/linux/x86_64/release/src/main.cpp.o
     VERBATIM
 )
-add_custom_target(target_coc_9624AB5E
-    DEPENDS output_coc_9624AB5E
+add_custom_target(target_coc_9344C036
+    DEPENDS output_coc_9344C036
 )
-add_dependencies(coc target_coc_9624AB5E)
+add_dependencies(coc target_coc_9344C036)
 target_compile_options(coc PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-m64>
     $<$<COMPILE_LANGUAGE:CXX>:-m64>

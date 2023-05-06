@@ -12,9 +12,10 @@ export module coc;
 using namespace std;
 
 namespace coc {
-//    export class Options;
-//    export class Arguments;
-//    export class Values;
+    export int i=2;
+    // export class Options;
+    // export class Arguments;
+    // export class Values;
     export typedef struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool is_version_logs=true;//if open version logs.
@@ -34,7 +35,7 @@ namespace coc {
 
     export class Log{
     public:
-        inline void notFoundArgument(const string& argument){
+        virtual inline void notFoundArgument(const string& argument){
             fmt::print("Error:Not found argument:{}.",argument);
         }
     };
@@ -46,7 +47,6 @@ namespace coc {
             string name;
             string describe;
             int number;
-            bool is_necessary;
             char short_cut;
         } Option;
         ParserConfig *config;
@@ -66,8 +66,8 @@ namespace coc {
             }
         }
 
-        vector<Option*> options;
-        vector<int> options_u;
+        vector<Option*> options;//options list
+        vector<Option*> options_u;//user options list
         //add an option to options list
         inline void addOption(string& name,string& describe,int number,char short_cut){
             this->options.push_back(new Options::Option(name,describe,number,short_cut));
@@ -76,9 +76,9 @@ namespace coc {
         void addOptionsU(string&str){
             if(str[1]=='-'){
                 //if the 2nd char is -
-                for(auto& iter_opt:this->options){
+                for(auto iter_opt:this->options){
                     if(iter_opt->name == str.substr(2, str.size() - 2)){
-                        this->options_u.push_back(iter_opt->number);
+                        this->options_u.push_back(iter_opt);//add option ptr to options_u
                         return;
                     }
                 }
@@ -91,7 +91,7 @@ namespace coc {
                 for (auto &iter_str: str){
                     for(auto &iter_opt:this->options){
                         if(iter_opt->short_cut!=NULL&&iter_str==iter_opt->short_cut){
-                            this->options_u.push_back(iter_opt->number);
+                            this->options_u.push_back(iter_opt);//add option ptr to options_u
                             error= false;
                         }
                     }
@@ -104,28 +104,29 @@ namespace coc {
                 }
             }
         }
-        bool checkout(){
-            for(auto&iter:this->options){
-                if(iter->is_necessary) {
-                    auto p= std::find(this->options_u.begin(), this->options_u.end(), iter->number);
-                    if(p == options_u.end()){
-                        //error
-                        //log->...
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
     public:
         inline int at(int index){
             if(index>=this->options_u.size()){
                 return -1;
             }
-            return this->options_u[index];
+            return this->options_u[index]->number;
         }
         inline int operator[](int index){
             return this->at(index);
+        }
+        inline bool getOption(const string& option){
+            for(auto iter:this->options_u){
+                if(iter->name==option)
+                    return true;
+            }
+            return false;
+        }
+        inline bool getOption(char short_cut){
+            for(auto iter:this->options_u){
+                if(iter->short_cut==short_cut)
+                    return true;
+            }
+            return false;
         }
     };
 
@@ -142,9 +143,6 @@ namespace coc {
         Log* log;
         map<string,Argument*> arguments;
         map<string,string> arguments_u;
-        Arguments(Log* log){
-            this->log=log;
-        }
 
         ~Arguments(){
             for(auto& p:this->arguments){
@@ -161,9 +159,7 @@ namespace coc {
             string value;
             string buff;
 
-            buff=argv.substr(2,argv.size()-3);
-            std::string long_str = "this_is_why_we_play";
-
+            buff=argv.substr(2,argv.size()-2);
             regex reg("=");
             sregex_token_iterator iter(buff.begin(),buff.end(),reg);
             try {
@@ -188,11 +184,45 @@ namespace coc {
         }
     public:
         //the first is value.if the second is false,it means that the value was not found
-        inline pair<int,bool> getInt(string name){}
-        inline pair<float,bool> getFloat(string name){}
-        inline pair<bool,bool> getBool(string name){}
-        inline pair<char,bool> getChar(string name){}
-        inline pair<string,bool> getString(string name){}
+        inline int getInt(const string& name,int default_){
+            auto p=this->arguments_u.find(name);
+            if(p==this->arguments_u.end())
+                return default_;
+            return stoi(p->second);
+        }
+        inline float getFloat(const string& name,float default_){
+            auto p=this->arguments_u.find(name);
+            if(p==this->arguments_u.end())
+                return default_;
+            return stof(p->second);
+        }
+        inline char getChar(const string& name,char default_){
+            auto p=this->arguments_u.find(name);
+            if(p==this->arguments_u.end())
+                return default_;
+            return p->second[0];
+        }
+        inline bool getBool(const string& name,bool default_){
+            auto p=this->arguments_u.find(name);
+            if(p==this->arguments_u.end())
+                return default_;
+            if(p->second=="FALSE"||
+            p->second=="False"||
+            p->second=="false"||
+            p->second=="0")
+                return false;
+            else
+                return true;
+
+            //to avoid IDE's warning
+            return true;
+        }
+        inline string getString(const string& name,const string& default_){
+            auto p=this->arguments_u.find(name);
+            if(p==this->arguments_u.end())
+                return default_;
+            return p->second;
+        }
     };
 
     export class Values{
@@ -256,7 +286,6 @@ namespace coc {
 
         inline int run(vector<string>& option,vector<string>& argv, Arguments *arguments){
             for(auto&iter:option) {options->addOptionsU(iter);}
-            if(!this->options->checkout()) return -1;
             if(!this->values->log()) return -1;
             this->af(this->options,arguments,this->values,argv);
         }
