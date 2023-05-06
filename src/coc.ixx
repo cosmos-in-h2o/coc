@@ -12,6 +12,7 @@ export module coc;
 using namespace std;
 
 namespace coc {
+
     // export class Options;
     // export class Arguments;
     // export class Values;
@@ -71,35 +72,46 @@ namespace coc {
         inline void addOption(string& name,string& describe,int number,char short_cut){
             this->options.push_back(new Options::Option(name,describe,number,short_cut));
         }
-        //add options which user input.
-        void addOptionsU(string&str){
-            if(str[1]=='-'){
-                //if the 2nd char is -
-                for(auto iter_opt:this->options){
-                    if(iter_opt->name == str.substr(2, str.size() - 2)){
-                        this->options_u.push_back(iter_opt);//add option ptr to options_u
-                        return;
-                    }
-                }
-                //error at there
-                //run->...
+        //add options_argv which user input.
+        bool run(vector<string>& options_argv){
+            /*
+            * in this step complete:
+            * Analysis of options_argv
+            */
 
-            }
-            else {
-                bool error=true;
-                for (auto iter_str: str){
-                    for(auto iter_opt:this->options){
-                        if(iter_opt->short_cut!=NULL&&iter_str==iter_opt->short_cut){
+            /*
+             * after that
+             * call none
+             */
+            for(auto &str:options_argv) {
+                if (str[1] == '-') {
+                    //if the 2nd char is -
+                    for (auto iter_opt: this->options) {
+                        if (iter_opt->name == str.substr(2, str.size() - 2)) {
                             this->options_u.push_back(iter_opt);//add option ptr to options_u
-                            error= false;
+                            return true;
                         }
                     }
-                }
-                if(error){
                     //error at there
                     //run->...
+                    return false;
+                } else {
+                    bool error = true;
+                    for (auto iter_str: str) {
+                        for (auto iter_opt: this->options) {
+                            if (iter_opt->short_cut != NULL && iter_str == iter_opt->short_cut) {
+                                this->options_u.push_back(iter_opt);//add option ptr to options_u
+                                error = false;
+                            }
+                        }
+                    }
+                    if (error) {
+                        //error at there
+                        //log->...
 
 
+                    }
+                    return !error;
                 }
             }
         }
@@ -156,28 +168,36 @@ namespace coc {
         inline void addArgument(const string& argument_name,const string& argument_type,const string& describe,const string &default_value=""){
             this->arguments[argument_name]=new Argument(argument_type,describe,default_value);
         }
-        bool addArgumentsU(const string& argv){
+        bool run(const string& argv){
+            /*
+            * in this step complete:
+            * Analysis of argument
+            */
+
+            /*
+             * after that
+             * call none
+             */
             string key;
             string value;
             string buff;
 
-            buff=argv.substr(2,argv.size()-2);
+            buff = argv.substr(2, argv.size() - 2);
             regex reg("=");
-            sregex_token_iterator iter(buff.begin(),buff.end(),reg);
+            sregex_token_iterator iter(buff.begin(), buff.end(), reg);
             try {
                 key = *iter;
                 iter++;
                 value = *iter;
             }
-            catch(regex_error& e){
-                cout<<e.what()<<"\ncode"<<e.code();
+            catch (regex_error &e) {
+                cout << e.what() << "\ncode" << e.code();
                 return false;
             }
-            auto p=this->arguments.find(key);
-            if(p!=this->arguments.end()){
-                this->arguments_u[key]=value;
-            }
-            else{
+            auto p = this->arguments.find(key);
+            if (p != this->arguments.end()) {
+                this->arguments_u[key] = value;
+            } else {
                 //error
                 //run->...
                 return false;
@@ -249,6 +269,15 @@ namespace coc {
         }
         //put run and get value that user input
         bool run(){
+            /*
+            * in this step complete:
+            * Analysis of values
+            */
+
+            /*
+             * after that
+             * call none
+             */
             string buff;
             for(auto iter:this->values){
                 cout<<iter->log;
@@ -304,8 +333,19 @@ namespace coc {
         Options* options;
         Values* values;
 
-        inline int run(vector<string>& option,vector<string>& argv, Arguments *arguments){
-            for(auto&iter:option) {options->addOptionsU(iter);}
+        inline int run(vector<string>& options_argv,vector<string>& argv, Arguments *arguments){
+            /*
+            * in this step complete:
+            * do nothing,only call function
+            */
+
+            /*
+             * after that
+             * call options' run()
+             * call values' run()
+             */
+
+            if(!this->options->run(options_argv)) return -1;
             if(!this->values->run()) return -1;
             this->af(this->options,arguments,this->values,argv);
         }
@@ -340,6 +380,15 @@ namespace coc {
 
         //if error,the function will return false
         inline int run(string action_name,vector<string>& options,vector<string>& argv,Arguments *arguments) {
+            /*
+            * in this step complete:
+            * find the designated action
+            */
+
+            /*
+             * after that
+             * call action's run()
+             */
             auto p = this->actions.find(action_name);
             if (p == this->actions.end()) {
                 //error
@@ -391,18 +440,6 @@ namespace coc {
             this->config = new ParserConfig;
             this->log = new Log;
         }
-        Parser(ParserConfig &p,Log* log):
-            log(log){
-            *(this->config) = p;
-        }
-        Parser(ParserConfig *p,Log& log):
-            config(p){
-            *(this->log) = log;
-        }
-        Parser(ParserConfig &p,Log& log){
-            *(this->config) = p;
-            *(this->log) = log;
-        }
         Parser(ParserConfig *p,Log* log):
             config(p),log(log)
         {}
@@ -418,24 +455,17 @@ namespace coc {
             this->arguments=nullptr;
         }
         void defaultConfig(){
-            if(this->config!= nullptr)
-                delete this->config;
-            if(this->log!= nullptr)
-                delete this->log;
-            //here need add some code
+            delete this->config;
+            this->config= nullptr;
+            delete this->log;
+            this->log= nullptr;
         }
-        //over run
-        void loadLog(Log& log){
-            *(this->log)=log;
-        }
+        //over log
         void loadLog(Log* log){
             delete this->log;
             this->log=log;
         }
         //over config
-        void loadConfig(ParserConfig &p){
-            *(this->config)=p;
-        }
         void loadConfig(ParserConfig *p){
             delete this->config;
             this->config=p;
@@ -472,30 +502,44 @@ namespace coc {
         }
 
         int run(int argc,char** argv) {
-            //determine global action
-            vector<string> argv_vec(24);
+            /*
+             * in this step complete:
+             * Analysis of argv except options and arguments
+             * determine which is option
+             * determine which is argument
+             */
+
+            /*
+             * after that
+             * call actions' run() or global_action's run()
+             * call arguments' run()
+             */
+
+            //determine is the global action
+            vector<string> all_argv(24);//all cmd argv
             vector<string> options;
-            vector<string> argv_v;
+            vector<string> argv_vector;//argv except options and arguments
             int i=1;
+            //if it isn't the global action, then read from index of 2
             if(argv[1][0]!='-') i=2;
             for (; i < argc; ++i) {
-                argv_vec.emplace_back(argv[i]);
+                all_argv.emplace_back(argv[i]);
             }
 
-            for(auto&p:argv_vec){
+            for(auto&p:all_argv){
                 if(p[0]=='-')
                     if(p[1]==this->config->argument_mark)
-                        arguments->addArgumentsU(p);
+                        if(!arguments->run(p)) return -1;
                     else
                         options.push_back(p);
                 else
-                    argv_v.push_back(p);
+                    argv_vector.push_back(p);
             }
-
+            //run global
             if(this->config->is_global_action&&argv[1][0]=='-'){
-                return this->actions->get_global()->run(options,argv_v,this->arguments);
+                return this->actions->get_global()->run(options, argv_vector, this->arguments);
             }
-            return this->actions->run(argv[1],options,argv_v,this->arguments);
+            return this->actions->run(argv[1], options, argv_vector, this->arguments);
         }
     };
 }
