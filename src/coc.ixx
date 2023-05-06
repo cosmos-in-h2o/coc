@@ -12,7 +12,6 @@ export module coc;
 using namespace std;
 
 namespace coc {
-    export int i=2;
     // export class Options;
     // export class Arguments;
     // export class Values;
@@ -60,7 +59,7 @@ namespace coc {
         {}
 
         ~Options(){
-            for(auto& p:this->options){
+            for(auto p:this->options){
                 delete p;
                 p=nullptr;
             }
@@ -83,13 +82,13 @@ namespace coc {
                     }
                 }
                 //error at there
-                //log->...
+                //run->...
 
             }
             else {
                 bool error=true;
-                for (auto &iter_str: str){
-                    for(auto &iter_opt:this->options){
+                for (auto iter_str: str){
+                    for(auto iter_opt:this->options){
                         if(iter_opt->short_cut!=NULL&&iter_str==iter_opt->short_cut){
                             this->options_u.push_back(iter_opt);//add option ptr to options_u
                             error= false;
@@ -98,7 +97,7 @@ namespace coc {
                 }
                 if(error){
                     //error at there
-                    //log->...
+                    //run->...
 
 
                 }
@@ -180,7 +179,7 @@ namespace coc {
             }
             else{
                 //error
-                //log->...
+                //run->...
                 return false;
             }
             return true;
@@ -216,9 +215,6 @@ namespace coc {
                 return false;
             else
                 return true;
-
-            //to avoid IDE's warning
-            return true;
         }
         inline string getString(const string& name,const string& default_){
             auto p=this->arguments_u.find(name);
@@ -251,27 +247,48 @@ namespace coc {
         inline void addValue(string& value_name,string& log,string& value_type,string& describe,string& default_value){
             this->values.push_back(new Values::Value(value_name,log,value_type,describe,default_value));
         }
-        //put log and get value that user input
-        bool log(){
+        //put run and get value that user input
+        bool run(){
             string buff;
-            for(auto &iter:this->values){
+            for(auto iter:this->values){
                 cout<<iter->log;
                 cin>>buff;
-                if(buff.empty()&&iter->default_value.empty()){
-                    //error
-                    //log->...
-                    return false;
+                if(buff.empty()){
+                    if(iter->default_value.empty()){
+                        //error
+                        //run->...
+                        return false;
+                    }
+                    else{
+                        this->values_u[iter->value_name]=iter->default_value;
+                        return true;
+                    }
                 }
                 this->values_u[iter->value_name]=buff;
+                return true;
             }
         }
     public:
         //the first is value.if the second is false,it means that the value was not found
-        inline pair<int,bool> getInt(string name){}
-        inline pair<float,bool> getFloat(string name){}
-        inline pair<bool,bool> getBool(string name){}
-        inline pair<char,bool> getChar(string name){}
-        inline pair<string,bool> getString(string name){}
+        inline int getInt(const string& name){
+            return stoi(this->values_u[name]);
+        }
+        inline float getFloat(const string& name){
+            return stof(this->values_u[name]);
+        }
+        inline char getChar(const string& name){
+            return this->values_u[name][0];
+        }
+        inline bool getBool(const string& name){
+            string& buff=this->values_u[name];
+            if(buff=="FALSE"||buff=="False"||buff=="false"||buff=="0")
+                return false;
+            else
+                return true;
+        }
+        inline string getString(const string& name){
+            return this->values_u[name];
+        }
     };
 
     //action function pointer
@@ -289,7 +306,7 @@ namespace coc {
 
         inline int run(vector<string>& option,vector<string>& argv, Arguments *arguments){
             for(auto&iter:option) {options->addOptionsU(iter);}
-            if(!this->values->log()) return -1;
+            if(!this->values->run()) return -1;
             this->af(this->options,arguments,this->values,argv);
         }
     public:
@@ -407,7 +424,7 @@ namespace coc {
                 delete this->log;
             //here need add some code
         }
-        //over log
+        //over run
         void loadLog(Log& log){
             *(this->log)=log;
         }
