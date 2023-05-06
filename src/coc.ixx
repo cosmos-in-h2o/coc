@@ -128,6 +128,9 @@ namespace coc {
             }
             return false;
         }
+        inline vector<Option*> get_list(){
+            return this->options_u;
+        }
     };
 
     export class Arguments{
