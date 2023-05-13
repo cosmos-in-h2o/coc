@@ -1,0 +1,11 @@
+[
+{
+  "directory": "/home/dream/Program/coc",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++23", "-DNDEBUG", "-o", "build/.objs/coc/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
+  "file": "src/main.cpp"
+},
+{
+  "directory": "/home/dream/Program/coc",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++23", "-DNDEBUG", "-o", "build/.objs/coc/linux/x86_64/release/src/coc.cc.o", "src/coc.cc"],
+  "file": "src/coc.cc"
+}]

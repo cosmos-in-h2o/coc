@@ -12,7 +12,6 @@ export module coc;
 using namespace std;
 
 namespace coc {
-
     // export class Options;
     // export class Arguments;
     // export class Values;
@@ -21,6 +20,9 @@ namespace coc {
         bool is_version_logs=true;//if open version logs.
         bool intellisense=true;//not supported now
         bool is_global_action=true;
+        bool is_exit_if_not_found_option=true;
+        bool is_unix=true;
+        bool argument_need_extern=true;
         string logo_and_version=
                 "coc v1.0.0\n"
                 "\t  ____ ___   ____ \n"
@@ -33,15 +35,27 @@ namespace coc {
         char argument_mark='D';//-[argument_mark] mark as argument
     } ParserConfig;
 
-    export class Log{
-    public:
-        virtual inline void notFoundArgument(const string& argument){
-            fmt::print("Error:Not found argument:{}.",argument);
+    export struct Log{
+        virtual inline void unidentifiedArgument(const string& argument){
+            fmt::print("Error:Unidentified argument:{}.",argument);
+        }
+        virtual inline void unidentifiedOption(const string& option){
+            fmt::print("Error:Unidentified option:--{}",option);
+        }
+        virtual inline void unidentifiedOption(char option){
+            fmt::print("Error:Unidentified option:-{}",option);
+        }
+        virtual inline void noValueEntered(const string& value){
+            fmt::print("Error:Value:{} not assigned",value);
+        }
+        virtual inline void notFoundAction(const string& action){
+            fmt::print("Error:Not found action:{}",action);
         }
     };
 
     export class Options{
         friend class Action;
+        friend class Parser;
     private:
         typedef struct Option{
             string name;
@@ -52,11 +66,7 @@ namespace coc {
         ParserConfig *config;
         Log *log;
         Options():
-            config(nullptr),log(nullptr)
-        {}
-
-        Options(ParserConfig* config,Log* log):
-            config(config),log(log)
+               config(nullptr),log(nullptr)
         {}
 
         ~Options(){
@@ -87,13 +97,13 @@ namespace coc {
                 if (str[1] == '-') {
                     //if the 2nd char is -
                     for (auto iter_opt: this->options) {
+                        //find right option
                         if (iter_opt->name == str.substr(2, str.size() - 2)) {
                             this->options_u.push_back(iter_opt);//add option ptr to options_u
                             return true;
                         }
                     }
-                    //error at there
-                    //run->...
+                    log->unidentifiedOption(str);
                     return false;
                 } else {
                     bool error = true;
@@ -104,12 +114,16 @@ namespace coc {
                                 error = false;
                             }
                         }
+                        if (error) {
+                            log->unidentifiedOption(iter_str);
+                            if(config->is_exit_if_not_found_option)
+                            {
+                                return false;
+                            }
+                        }
                     }
-                    if (error) {
-                        //error at there
-                        //log->...
-
-
+                    if(!config->is_exit_if_not_found_option){
+                        return true;
                     }
                     return !error;
                 }
@@ -150,7 +164,6 @@ namespace coc {
         typedef struct Argument{
             string argument_type;
             string describe;
-            string default_value;
         } Argument;
 
         ParserConfig* config;
@@ -165,8 +178,8 @@ namespace coc {
             }
         }
         //add an argument to list
-        inline void addArgument(const string& argument_name,const string& argument_type,const string& describe,const string &default_value=""){
-            this->arguments[argument_name]=new Argument(argument_type,describe,default_value);
+        inline void addArgument(const string& argument_name,const string& argument_type,const string& describe){
+            this->arguments[argument_name]=new Argument(argument_type,describe);
         }
         bool run(const string& argv){
             /*
@@ -194,13 +207,17 @@ namespace coc {
                 cout << e.what() << "\ncode" << e.code();
                 return false;
             }
-            auto p = this->arguments.find(key);
-            if (p != this->arguments.end()) {
-                this->arguments_u[key] = value;
-            } else {
-                //error
-                //run->...
-                return false;
+            if(config->argument_need_extern) {
+                auto p = this->arguments.find(key);
+                if (p != this->arguments.end()) {
+                    this->arguments_u[key] = value;
+                } else {
+                    log->unidentifiedArgument(key);
+                    return false;
+                }
+            }
+            else{
+                this->arguments_u[key]=value;
             }
             return true;
         }
@@ -229,9 +246,9 @@ namespace coc {
             if(p==this->arguments_u.end())
                 return default_;
             if(p->second=="FALSE"||
-            p->second=="False"||
-            p->second=="false"||
-            p->second=="0")
+                p->second=="False"||
+                p->second=="false"||
+                p->second=="0")
                 return false;
             else
                 return true;
@@ -246,6 +263,7 @@ namespace coc {
 
     export class Values{
         friend class Action;
+        friend class Parser;
     private:
         typedef struct Value{
             string value_name;
@@ -256,6 +274,8 @@ namespace coc {
         } Value;
         vector<Value*> values;
         map<string,string> values_u;
+        ParserConfig* config;
+        Log* log;
         ~Values(){
             for(auto&p:values){
                 delete p;
@@ -284,8 +304,7 @@ namespace coc {
                 cin>>buff;
                 if(buff.empty()){
                     if(iter->default_value.empty()){
-                        //error
-                        //run->...
+                        log->noValueEntered(values_u[iter->value_name]);
                         return false;
                     }
                     else{
@@ -332,7 +351,9 @@ namespace coc {
         char short_cut;
         Options* options;
         Values* values;
-
+        //pass down
+        ParserConfig *config;
+        Log *log;
         inline int run(vector<string>& options_argv,vector<string>& argv, Arguments *arguments){
             /*
             * in this step complete:
@@ -351,8 +372,13 @@ namespace coc {
         }
     public:
         Action(string& describe,action_fun& af,char short_cut):
-            describe(describe),af(af),short_cut(short_cut)
-        {}
+              describe(describe),af(af),short_cut(short_cut)
+        {
+            this->values->config=this->config;
+            this->values->log=this->log;
+            this->options->config=this->config;
+            this->options->log=this->log;
+        }
         ~Action(){
             delete this->options;
             this->options=nullptr;
@@ -391,8 +417,7 @@ namespace coc {
              */
             auto p = this->actions.find(action_name);
             if (p == this->actions.end()) {
-                //error
-
+                log->notFoundAction(action_name);
                 return -1;
             }
             return this->actions[action_name]->run(options,argv,arguments);
@@ -439,10 +464,23 @@ namespace coc {
         Parser(){
             this->config = new ParserConfig;
             this->log = new Log;
+            this->arguments=new Arguments;
+            this->actions=new Actions;
+            this->arguments->config=this->config;
+            this->arguments->log=this->log;
+            this->actions->config=this->config;
+            this->actions->log=this->log;
         }
         Parser(ParserConfig *p,Log* log):
-            config(p),log(log)
-        {}
+               config(p),log(log)
+        {
+            this->arguments=new Arguments;
+            this->actions=new Actions;
+            this->arguments->config=this->config;
+            this->arguments->log=this->log;
+            this->actions->config=this->config;
+            this->actions->log=this->log;
+        }
 
         ~Parser(){
             delete this->config;
@@ -475,8 +513,8 @@ namespace coc {
             return this->actions->addAction(action_name,describe,af,short_cut);
         }
         //only package with a layer
-        inline Parser* addArgument(const string& argument_name,const string& argument_type,const string& describe,const string &default_value=""){
-            this->arguments->addArgument(argument_type,describe,default_value,default_value);
+        inline Parser* addArgument(const string& argument_name,const string& argument_type,const string& describe){
+            this->arguments->addArgument(argument_name,argument_type,describe);
             return this;
         }
         //get and set function
@@ -529,11 +567,12 @@ namespace coc {
             for(auto&p:all_argv){
                 if(p[0]=='-')
                     if(p[1]==this->config->argument_mark)
-                        if(!arguments->run(p)) return -1;
+                        if(!arguments->run(p))
+                            return -1;
+                        else
+                            options.push_back(p);
                     else
-                        options.push_back(p);
-                else
-                    argv_vector.push_back(p);
+                        argv_vector.push_back(p);
             }
             //run global
             if(this->config->is_global_action&&argv[1][0]=='-'){
@@ -542,4 +581,4 @@ namespace coc {
             return this->actions->run(argv[1], options, argv_vector, this->arguments);
         }
     };
-}
+}//namespace coc
