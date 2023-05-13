@@ -60,3 +60,9 @@ If you still input `./main helloworld`,the terminal will print `helloworld`\
 But if you input `./main -d helloworld` or `./main --dot helloworld`,the terminal will print `helloworld.`
 ## Value
 ## Argument
+
+## **Plan**
+- default help fun
+- intellisense mode
+- some config
+    + shut down unix style
