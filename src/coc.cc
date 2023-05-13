@@ -10,7 +10,8 @@ module;
 export module coc;
 
 using namespace std;
-
+#undef NULL
+#define NULL '\0'
 namespace coc {
     // export class Options;
     // export class Arguments;
@@ -51,6 +52,12 @@ namespace coc {
         virtual inline void notFoundAction(const string& action){
             fmt::print("Error:Not found action:{}",action);
         }
+        virtual inline void valueLog(const string &value_log,const string& default_value){
+            string temp;
+            if(!default_value.empty())
+                temp=fmt::format("(default={})",default_value);
+            fmt::print("{}{}",value_log,temp);
+        }
     };
 
     export class Options{
@@ -65,17 +72,6 @@ namespace coc {
         } Option;
         ParserConfig *config;
         Log *log;
-        Options():
-               config(nullptr),log(nullptr)
-        {}
-
-        ~Options(){
-            for(auto p:this->options){
-                delete p;
-                p=nullptr;
-            }
-        }
-
         vector<Option*> options;//options list
         vector<Option*> options_u;//user options list
         //add an option to options list
@@ -130,6 +126,16 @@ namespace coc {
             }
         }
     public:
+        Options():
+               config(nullptr),log(nullptr)
+        {}
+
+        ~Options(){
+            for(auto p:this->options){
+                delete p;
+                p=nullptr;
+            }
+        }
         inline int at(int index){
             if(index>=this->options_u.size()){
                 return -1;
@@ -161,22 +167,16 @@ namespace coc {
     export class Arguments{
         friend class Parser;
     private:
-        typedef struct Argument{
+        struct Argument{
             string argument_type;
             string describe;
-        } Argument;
+        };
 
         ParserConfig* config;
         Log* log;
         map<string,Argument*> arguments;
         map<string,string> arguments_u;
 
-        ~Arguments(){
-            for(auto& p:this->arguments){
-                delete p.second;
-                p.second= nullptr;
-            }
-        }
         //add an argument to list
         inline void addArgument(const string& argument_name,const string& argument_type,const string& describe){
             this->arguments[argument_name]=new Argument(argument_type,describe);
@@ -222,6 +222,16 @@ namespace coc {
             return true;
         }
     public:
+        Arguments():
+                 config(nullptr),log(nullptr)
+        {}
+
+        ~Arguments(){
+            for(auto& p:this->arguments){
+                delete p.second;
+                p.second= nullptr;
+            }
+        }
         //the first is value.if the second is false,it means that the value was not found
         inline int getInt(const string& name,int default_){
             auto p=this->arguments_u.find(name);
@@ -267,7 +277,7 @@ namespace coc {
     private:
         typedef struct Value{
             string value_name;
-            string log;
+            string value_log;
             string value_type;
             string describe;
             string default_value;
@@ -276,16 +286,10 @@ namespace coc {
         map<string,string> values_u;
         ParserConfig* config;
         Log* log;
-        ~Values(){
-            for(auto&p:values){
-                delete p;
-                p= nullptr;
-            }
-        }
 
         //add a value to list
-        inline void addValue(string& value_name,string& log,string& value_type,string& describe,string& default_value){
-            this->values.push_back(new Values::Value(value_name,log,value_type,describe,default_value));
+        inline void addValue(string& value_name,string& value_log,string& value_type,string& describe,string& default_value){
+            this->values.push_back(new Values::Value(value_name,value_log,value_type,describe,default_value));
         }
         //put run and get value that user input
         bool run(){
@@ -300,7 +304,7 @@ namespace coc {
              */
             string buff;
             for(auto iter:this->values){
-                cout<<iter->log;
+                log->valueLog(iter->value_log,iter->default_value);
                 cin>>buff;
                 if(buff.empty()){
                     if(iter->default_value.empty()){
@@ -309,14 +313,23 @@ namespace coc {
                     }
                     else{
                         this->values_u[iter->value_name]=iter->default_value;
-                        return true;
+                        continue;
                     }
                 }
                 this->values_u[iter->value_name]=buff;
-                return true;
             }
+            return true;
         }
     public:
+        Values():
+              config(nullptr),log(nullptr)
+        {}
+        ~Values(){
+            for(auto&p:values){
+                delete p;
+                p= nullptr;
+            }
+        }
         //the first is value.if the second is false,it means that the value was not found
         inline int getInt(const string& name){
             return stoi(this->values_u[name]);
@@ -369,10 +382,11 @@ namespace coc {
             if(!this->options->run(options_argv)) return -1;
             if(!this->values->run()) return -1;
             this->af(this->options,arguments,this->values,argv);
+            return 1;
         }
     public:
         Action(string& describe,action_fun& af,char short_cut):
-              describe(describe),af(af),short_cut(short_cut)
+              describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(nullptr),log(nullptr)
         {
             this->values->config=this->config;
             this->values->log=this->log;
@@ -385,12 +399,12 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        inline Action* addOption(string& name,string &describe,int number,char short_cut=NULL){
+        inline Action* addOption(string&& name,string &&describe,int number,char short_cut=NULL){
             this->options->addOption(name,describe,number,short_cut);
             return this;
         }
 
-        inline Action* addValue(string value_name,string log,string value_type,string describe,string default_value=""){
+        inline Action* addValue(string&& value_name,string&& log,string&& value_type,string&& describe,string&& default_value=""){
             this->values->addValue(value_name,log,value_type,describe,default_value);
             return this;
         }
@@ -405,7 +419,7 @@ namespace coc {
         map<string, Action*> actions;
 
         //if error,the function will return false
-        inline int run(string action_name,vector<string>& options,vector<string>& argv,Arguments *arguments) {
+        inline int run(string&& action_name,vector<string>& options,vector<string>& argv,Arguments *arguments) {
             /*
             * in this step complete:
             * find the designated action
@@ -423,6 +437,9 @@ namespace coc {
             return this->actions[action_name]->run(options,argv,arguments);
         }
     public:
+        Actions():
+               log(nullptr),config(nullptr),global(nullptr),actions(map<string, Action*>())
+        {}
         ~Actions(){
             for(auto&p:this->actions){
                 delete p.second;
@@ -431,13 +448,9 @@ namespace coc {
             delete this->global;
             this->global=nullptr;
         }
-        inline Action* get_global(){
-            if(this->config->is_global_action)
-                return this->global;
-            return nullptr;
-        }
+
         //add an action
-        inline Action* addAction(string action_name,string describe,action_fun af,char short_cut=NULL){
+        inline Action* addAction(string& action_name,string& describe,action_fun af,char short_cut=NULL){
             auto p =new Action(describe,af,short_cut);
             this->actions[action_name]=p;
             return p;
@@ -461,7 +474,8 @@ namespace coc {
             }
         }
     public:
-        Parser(){
+        Parser():
+              hp(nullptr){
             this->config = new ParserConfig;
             this->log = new Log;
             this->arguments=new Arguments;
@@ -472,7 +486,7 @@ namespace coc {
             this->actions->log=this->log;
         }
         Parser(ParserConfig *p,Log* log):
-               config(p),log(log)
+               config(p),log(log),hp(nullptr)
         {
             this->arguments=new Arguments;
             this->actions=new Actions;
@@ -509,11 +523,11 @@ namespace coc {
             this->config=p;
         }
         //only package with a layer
-        inline Action* addAction(const string& action_name,const string& describe,action_fun af,char short_cut=NULL){
+        inline Action* addAction(string&& action_name,string&& describe,action_fun af,char short_cut=NULL){
             return this->actions->addAction(action_name,describe,af,short_cut);
         }
         //only package with a layer
-        inline Parser* addArgument(const string& argument_name,const string& argument_type,const string& describe){
+        inline Parser* addArgument(string&& argument_name,string&& argument_type,string&& describe){
             this->arguments->addArgument(argument_name,argument_type,describe);
             return this;
         }
@@ -526,8 +540,10 @@ namespace coc {
             return this->log;
         }
 
-        inline Actions* get_actions(){
-            return this->actions;
+        inline Action* get_global_actions(){
+            if(this->config->is_global_action)
+                return this->actions->global;
+            return nullptr;
         }
 
         inline Arguments* get_argument(){
@@ -576,7 +592,7 @@ namespace coc {
             }
             //run global
             if(this->config->is_global_action&&argv[1][0]=='-'){
-                return this->actions->get_global()->run(options, argv_vector, this->arguments);
+                return this->get_global_actions()->run(options, argv_vector, this->arguments);
             }
             return this->actions->run(argv[1], options, argv_vector, this->arguments);
         }
