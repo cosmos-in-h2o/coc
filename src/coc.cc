@@ -464,18 +464,17 @@ namespace coc {
         ParserConfig *config;
         Log *log;
         bool is_def_hp = true;//if open default function
-        help_fun hp;
+        help_fun hf;
         Actions *actions;
         Arguments *arguments;
         void help(){
             if(!this->is_def_hp){
-                this->hp(this);
+                this->hf(this);
                 return;
             }
         }
     public:
-        Parser():
-              hp(nullptr){
+        Parser(): hf(nullptr){
             this->config = new ParserConfig;
             this->log = new Log;
             this->arguments=new Arguments;
@@ -486,7 +485,7 @@ namespace coc {
             this->actions->log=this->log;
         }
         Parser(ParserConfig *p,Log* log):
-               config(p),log(log),hp(nullptr)
+               config(p),log(log), hf(nullptr)
         {
             this->arguments=new Arguments;
             this->actions=new Actions;
@@ -550,9 +549,9 @@ namespace coc {
             return this->arguments;
         }
         //set help function
-        void set_help(help_fun &hp){
+        void set_help(help_fun &hf){
             this->is_def_hp= false;
-            this->hp=hp;
+            this->hf = hf;
         }
 
         int run(int argc,char** argv) {
@@ -581,14 +580,18 @@ namespace coc {
             }
 
             for(auto&p:all_argv){
-                if(p[0]=='-')
-                    if(p[1]==this->config->argument_mark)
+                if(p[0]=='-') {
+                    if (p[1] == this->config->argument_mark) {
                         if(!arguments->run(p))
                             return -1;
-                        else
-                            options.push_back(p);
-                    else
-                        argv_vector.push_back(p);
+                    }
+                    else{
+                        options.push_back(p);
+                    }
+                }
+                else {
+                    argv_vector.push_back(p);
+                }
             }
             //run global
             if(this->config->is_global_action&&argv[1][0]=='-'){
