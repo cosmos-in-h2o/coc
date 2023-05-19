@@ -1,12 +1,10 @@
-module;
+//module;
+#include <algorithm>
+#include <iostream>
+#include <map>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
-#include <iostream>
-#include <algorithm>
-#include <regex>
-#include <fmt/format.h>
 export module coc;
 
 using namespace std;
@@ -16,7 +14,7 @@ namespace coc {
     // export class Options;
     // export class Arguments;
     // export class Values;
-    export typedef struct ParserConfig{
+    export struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool is_version_logs=true;//if open version logs.
         bool intellisense=true;//not supported now
@@ -34,29 +32,29 @@ namespace coc {
                 "\t\t\tcoc by dream727\n"
                 "==> https://github.com/dream727/coc";//your app's version
         char argument_mark='D';//-[argument_mark] mark as argument
-    } ParserConfig;
+    };
 
     export struct Log{
         virtual inline void unidentifiedArgument(const string& argument){
-            fmt::print("Error:Unidentified argument:{}.",argument);
+            printf("Error:Unidentified argument:%s.",argument.c_str());
         }
         virtual inline void unidentifiedOption(const string& option){
-            fmt::print("Error:Unidentified option:--{}",option);
+            printf("Error:Unidentified option:--%s",option.c_str());
         }
         virtual inline void unidentifiedOption(char option){
-            fmt::print("Error:Unidentified option:-{}",option);
+            printf("Error:Unidentified option:-%c",option);
         }
         virtual inline void noValueEntered(const string& value){
-            fmt::print("Error:Value:{} not assigned",value);
+            printf("Error:Value:%s not assigned",value.c_str());
         }
         virtual inline void notFoundAction(const string& action){
-            fmt::print("Error:Not found action:{}",action);
+            printf("Error:Not found action:%s",action.c_str());
         }
         virtual inline void valueLog(const string &value_log,const string& default_value){
-            string temp;
+            char *temp = nullptr;
             if(!default_value.empty())
-                temp=fmt::format("(default={})",default_value);
-            fmt::print("{}{}",value_log,temp);
+                ::sprintf(temp,"(default=%s)",default_value.c_str());
+            printf("%s%s",value_log.c_str(),temp);
         }
     };
 
@@ -64,19 +62,22 @@ namespace coc {
         friend class Action;
         friend class Parser;
     private:
-        typedef struct Option{
-            string name;
-            string describe;
+        struct Option{
+            string name,describe;
             int number;
             char short_cut;
-        } Option;
+            Option(string& name,string& describe,int number,char short_cut):
+                  name(name),describe(describe),number(number),short_cut(short_cut)
+            {}
+        };
         ParserConfig *config;
         Log *log;
         vector<Option*> options;//options list
         vector<Option*> options_u;//user options list
         //add an option to options list
         inline void addOption(string& name,string& describe,int number,char short_cut){
-            this->options.push_back(new Options::Option(name,describe,number,short_cut));
+            auto p=new Option(name,describe,number,short_cut);
+            this->options.push_back(p);
         }
         //add options_argv which user input.
         bool run(vector<string>& options_argv){
@@ -124,6 +125,7 @@ namespace coc {
                     return !error;
                 }
             }
+            return true;
         }
     public:
         Options():
@@ -168,8 +170,11 @@ namespace coc {
         friend class Parser;
     private:
         struct Argument{
-            string argument_type;
-            string describe;
+            string argument_type,describe;
+
+            Argument(string& argument_type,string& describe):
+                    argument_type(argument_type),describe(describe)
+            {}
         };
 
         ParserConfig* config;
@@ -178,7 +183,7 @@ namespace coc {
         map<string,string> arguments_u;
 
         //add an argument to list
-        inline void addArgument(const string& argument_name,const string& argument_type,const string& describe){
+        inline void addArgument(string& argument_name,string& argument_type,string& describe){
             this->arguments[argument_name]=new Argument(argument_type,describe);
         }
         bool run(const string& argv){
@@ -196,17 +201,14 @@ namespace coc {
             string buff;
 
             buff = argv.substr(2, argv.size() - 2);
-            regex reg("=");
-            sregex_token_iterator iter(buff.begin(), buff.end(), reg);
-            try {
-                key = *iter;
-                iter++;
-                value = *iter;
+            for (int i = 0; i < buff.size(); ++i) {
+                if(buff[i]=='='){
+                    buff[i]=' ';
+                }
             }
-            catch (regex_error &e) {
-                cout << e.what() << "\ncode" << e.code();
-                return false;
-            }
+            istringstream ss(buff);
+            ss>>key>>value;
+
             if(config->argument_need_extern) {
                 auto p = this->arguments.find(key);
                 if (p != this->arguments.end()) {
@@ -275,13 +277,12 @@ namespace coc {
         friend class Action;
         friend class Parser;
     private:
-        typedef struct Value{
-            string value_name;
-            string value_log;
-            string value_type;
-            string describe;
-            string default_value;
-        } Value;
+        struct Value{
+            string value_name,value_log,value_type,describe,default_value;
+            Value(string& value_name,string& value_log,string& value_type,string& describe,string& default_value):
+                  value_name(value_name),value_log(value_log),value_type(value_type),describe(describe),default_value(default_value)
+            {}
+        };
         vector<Value*> values;
         map<string,string> values_u;
         ParserConfig* config;
@@ -569,7 +570,7 @@ namespace coc {
              */
 
             //determine is the global action
-            vector<string> all_argv(24);//all cmd argv
+            vector<string> all_argv;//all cmd argv
             vector<string> options;
             vector<string> argv_vector;//argv except options and arguments
             int i=1;
