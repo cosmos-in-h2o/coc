@@ -51,10 +51,10 @@ namespace coc {
             printf("Error:Not found action:%s",action.c_str());
         }
         virtual inline void valueLog(const string &value_log,const string& default_value){
-            char *temp = nullptr;
+            string temp;
             if(!default_value.empty())
-                ::sprintf(temp,"(default=%s)",default_value.c_str());
-            printf("%s%s",value_log.c_str(),temp);
+                temp="(default="+default_value+")";
+            printf("%s%s:",value_log.c_str(),temp.c_str());
         }
     };
 
@@ -104,7 +104,8 @@ namespace coc {
                     return false;
                 } else {
                     bool error = true;
-                    for (auto iter_str: str) {
+                    string options_str=str.substr(1,str.size()-1);
+                    for (auto iter_str: options_str) {
                         for (auto iter_opt: this->options) {
                             if (iter_opt->short_cut != NULL && iter_str == iter_opt->short_cut) {
                                 this->options_u.push_back(iter_opt);//add option ptr to options_u
@@ -306,10 +307,10 @@ namespace coc {
             string buff;
             for(auto iter:this->values){
                 log->valueLog(iter->value_log,iter->default_value);
-                cin>>buff;
+                getline(std::cin,buff);
                 if(buff.empty()){
                     if(iter->default_value.empty()){
-                        log->noValueEntered(values_u[iter->value_name]);
+                        log->noValueEntered(iter->value_name);
                         return false;
                     }
                     else{
@@ -386,8 +387,8 @@ namespace coc {
             return 1;
         }
     public:
-        Action(string& describe,action_fun& af,char short_cut):
-              describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(nullptr),log(nullptr)
+        Action(string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
+              describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
         {
             this->values->config=this->config;
             this->values->log=this->log;
@@ -452,7 +453,9 @@ namespace coc {
 
         //add an action
         inline Action* addAction(string& action_name,string& describe,action_fun af,char short_cut=NULL){
-            auto p =new Action(describe,af,short_cut);
+            auto p =new Action(describe,af,short_cut,this->config,this->log);
+            p->config=this->config;
+            p->log=this->log;
             this->actions[action_name]=p;
             return p;
         }

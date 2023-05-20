@@ -7,4 +7,5 @@
 **/.vs/
 **/.vscode/
 **/.cache/
+target/
 .clang-tidy

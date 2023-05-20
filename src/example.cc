@@ -10,7 +10,7 @@ void test(Options*o,Arguments*a,Values*v,vector<string>&argv){
     for(auto iter:o->get_list()){
         cout<<iter->name<<"\n";
     }
-    cout<<"-----------------------------------";
+    cout<<"-----------------------------------\n";
     cout<<"arguments test\n";
     cout<<"arguments bool test:"<<a->getBool("BOOL",true)<<"\n";
     cout<<"arguments int test:"<<a->getInt("INT",-1)<<"\n";
@@ -18,12 +18,12 @@ void test(Options*o,Arguments*a,Values*v,vector<string>&argv){
     cout<<"arguments string test:"<<a->getString("STRING","string")<<"\n";
     cout<<"arguments float test:"<<a->getFloat("FLOAT",-1.1f)<<"\n";
 
-    cout<<"-----------------------------------";
+    cout<<"-----------------------------------\n";
     cout<<"value test:\n";
     cout<<"default value:"<<v->getString("value1")<<"\n";
     cout<<"value:"<<v->getString("value2")<<"\n";
 
-    cout<<"-----------------------------------";
+    cout<<"-----------------------------------\n";
     cout<<"argv test:\n";
     for(auto &iter:argv){
         cout<<iter;
