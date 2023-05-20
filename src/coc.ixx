@@ -16,11 +16,9 @@ namespace coc {
     // export class Values;
     export struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
-        bool is_version_logs=true;//if open version logs.
         bool intellisense=true;//not supported now
         bool is_global_action=true;
         bool is_exit_if_not_found_option=true;
-        bool is_unix=true;
         bool argument_need_extern=true;
         string logo_and_version=
                 "coc v1.0.0\n"
@@ -36,25 +34,25 @@ namespace coc {
 
     export struct Log{
         virtual inline void unidentifiedArgument(const string& argument){
-            printf("Error:Unidentified argument:%s.",argument.c_str());
+            printf("Error:Unidentified argument:%s.\n",argument.c_str());
         }
         virtual inline void unidentifiedOption(const string& option){
-            printf("Error:Unidentified option:--%s",option.c_str());
+            printf("Error:Unidentified option:--%s.\n",option.c_str());
         }
         virtual inline void unidentifiedOption(char option){
-            printf("Error:Unidentified option:-%c",option);
+            printf("Error:Unidentified option:-%c.\n",option);
         }
         virtual inline void noValueEntered(const string& value){
-            printf("Error:Value:%s not assigned",value.c_str());
+            printf("Error:Value:%s not assigned.\n",value.c_str());
         }
         virtual inline void notFoundAction(const string& action){
-            printf("Error:Not found action:%s",action.c_str());
+            printf("Error:Not found action:%s.\n",action.c_str());
         }
         virtual inline void valueLog(const string &value_log,const string& default_value){
             string temp;
             if(!default_value.empty())
                 temp="(default="+default_value+")";
-            printf("%s%s:",value_log.c_str(),temp.c_str());
+            printf("%s%s:\n",value_log.c_str(),temp.c_str());
         }
     };
 

@@ -6,6 +6,7 @@ using namespace std;
 using namespace coc;
 
 void test(Options*o,Arguments*a,Values*v,vector<string>&argv){
+    cout<<"-----------------------------------\n";
     cout<<"options test:\n";
     for(auto iter:o->get_list()){
         cout<<iter->name<<"\n";
@@ -26,7 +27,7 @@ void test(Options*o,Arguments*a,Values*v,vector<string>&argv){
     cout<<"-----------------------------------\n";
     cout<<"argv test:\n";
     for(auto &iter:argv){
-        cout<<iter;
+        cout<<iter<<'\n';
     }
 }
 
@@ -46,7 +47,7 @@ int main(int argc,char**argv) {
             ->addArgument("FLOAT", "float", "this is a float argument");
 
     return parser.run(argc, argv);
-    //target/coc test -fs -DBOOL=false -DINT=2233 -DCHAR=c -DSTRING=s -DFLOAT=22.33
-    //target/coc test --foption -s -DBOOL=false -DINT=2233 -DCHAR=c -DSTRING=s -DFLOAT=22.33
-    //target/coc test --foption --soption -DBOOL=false -DINT=2233 -DCHAR=c -DSTRING=s -DFLOAT=22.33
+    //target/coc test -fs -DBOOL=false -DINT=2233 -DCHAR=c -DSTRING=s -DFLOAT=22.33 argv argv
+    //target/coc test --foption -s -DBOOL=false -DINT=2233 -DCHAR=c -DSTRING=s -DFLOAT=22.33 argv argv
+    //target/coc test --foption --soption -DBOOL=false -DINT=2233 -DCHAR=c -DSTRING=s -DFLOAT=22.33 argv argv
 }
