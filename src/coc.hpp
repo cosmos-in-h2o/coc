@@ -356,8 +356,14 @@ namespace coc {
         }
     };
 
+    struct Getter{
+        Options& options;
+        Arguments& arguments;
+        Values& values;
+        std::vector<std::string>& argv;
+    };
     //action function pointer
-    typedef void (*action_fun)(Options*,Arguments*,Values*,std::vector<std::string>&);
+    typedef void (*action_fun)(Getter);
 
     class Action{
         friend class Actions;
@@ -385,12 +391,12 @@ namespace coc {
 
             if(!this->options->run(options_argv)) return -1;
             if(!this->values->run()) return -1;
-            this->af(this->options,arguments,this->values,argv);
+            this->af(Getter(*(this->options),*(arguments),*(this->values),argv));
             return 1;
         }
     public:
         Action(std::string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
-                                                                                                        describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
+              describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
         {
             this->values->config=this->config;
             this->values->log=this->log;
