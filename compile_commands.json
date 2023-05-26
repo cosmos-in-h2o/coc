@@ -1,11 +1,6 @@
 [
 {
   "directory": "/home/dream/Program/coc",
-  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++23", "-DNDEBUG", "-o", "build/.objs/coc/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
-  "file": "src/main.cpp"
-},
-{
-  "directory": "/home/dream/Program/coc",
-  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++23", "-DNDEBUG", "-o", "build/.objs/coc/linux/x86_64/release/src/coc.cc.o", "src/coc.cc"],
-  "file": "src/coc.cc"
+  "arguments": ["/usr/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-fmodules-ts", "-DNDEBUG", "-fmodule-file=build/.gens/coc/linux/x86_64/release/rules/modules/cache/a5d32aaa/coc.pcm", "-o", "build/.objs/coc/linux/x86_64/release/src/example.cc.o", "src/example.cc"],
+  "file": "src/example.cc"
 }]
