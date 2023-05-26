@@ -7,8 +7,7 @@
 #include <string>
 #include <vector>
 
-#undef NULL
-#define NULL '\0'
+#define COC_NULL_CHAR '\0'
 namespace coc {
     // export class Options;
     // export class Arguments;
@@ -108,7 +107,7 @@ namespace coc {
                     bool error = true;
                     for (auto iter_str: options_str) {
                         for (auto iter_opt: this->options) {
-                            if (iter_opt->short_cut != NULL && iter_str == iter_opt->short_cut) {
+                            if (iter_opt->short_cut != COC_NULL_CHAR && iter_str == iter_opt->short_cut) {
                                 this->options_u.push_back(iter_opt);//add option ptr to options_u
                                 error = false;
                             }
@@ -361,6 +360,9 @@ namespace coc {
         Arguments& arguments;
         Values& values;
         std::vector<std::string>& argv;
+        Getter(Options& options,Arguments& arguments,Values& values,std::vector<std::string>& argv):
+              options(options),arguments(arguments),values(values),argv(argv)
+        {}
     };
     //action function pointer
     typedef void (*action_fun)(Getter);
@@ -394,6 +396,7 @@ namespace coc {
             this->af(Getter(*(this->options),*(arguments),*(this->values),argv));
             return 1;
         }
+
     public:
         Action(std::string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
               describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
@@ -409,7 +412,7 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        inline Action* addOption(std::string&& name,std::string &&describe,int number,char short_cut=NULL){
+        inline Action* addOption(std::string&& name,std::string &&describe,int number,char short_cut= COC_NULL_CHAR){
             this->options->addOption(name,describe,number,short_cut);
             return this;
         }
@@ -439,12 +442,39 @@ namespace coc {
              * after that
              * call action's run()
              */
+
+            //if it's only one letter ,then it maybe shortcut
+            if(action_name.size()==1){
+                for(auto &[k,v]: this->actions){
+                    //if it has shortcut and the action name equal to shortcut
+                    if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
+                        return v->run(options,argv,arguments);
+                    }
+                }
+            }
             auto p = this->actions.find(action_name);
             if (p == this->actions.end()) {
+
                 log->notFoundAction(action_name);
                 return -1;
             }
             return this->actions[action_name]->run(options,argv,arguments);
+        }
+        int run(char action_name,std::vector<std::string>& options,std::vector<std::string>& argv,Arguments *arguments){
+            std::string name;
+            Action* action= nullptr;
+            for(auto &[k,v]:this->actions){
+                if(v->short_cut!= COC_NULL_CHAR &&v->short_cut==action_name){
+                    action=v;
+                    name=k;
+                    break;
+                }
+            }
+            if (action==nullptr) {
+                log->notFoundAction(name);
+                return -1;
+            }
+            return action->run(options,argv,arguments);
         }
     public:
         Actions():
@@ -460,7 +490,7 @@ namespace coc {
         }
 
         //add an action
-        inline Action* addAction(std::string& action_name,std::string& describe,action_fun af,char short_cut=NULL){
+        inline Action* addAction(std::string& action_name,std::string& describe,action_fun af,char short_cut= COC_NULL_CHAR){
             auto p =new Action(describe,af,short_cut,this->config,this->log);
             p->config=this->config;
             p->log=this->log;
@@ -534,7 +564,7 @@ namespace coc {
             this->config=p;
         }
         //only package with a layer
-        inline Action* addAction(std::string&& action_name,std::string&& describe,action_fun af,char short_cut=NULL){
+        inline Action* addAction(std::string&& action_name,std::string&& describe,action_fun af,char short_cut= COC_NULL_CHAR){
             return this->actions->addAction(action_name,describe,af,short_cut);
         }
         //only package with a layer
@@ -606,11 +636,11 @@ namespace coc {
                 }
             }
 
-            if(argc>=2&&this->config->is_global_action&&argv[1][0]!='-'){
-                return this->actions->run(argv[1], options, argv_vector, this->arguments);
-            }
             //run global
-            return this->get_global_actions()->run(options, argv_vector, this->arguments);
+            if(this->config->is_global_action&&(argv[1][0]=='-'||argv[1][0]== COC_NULL_CHAR)){
+                return this->get_global_actions()->run(options, argv_vector, this->arguments);
+            }
+            return this->actions->run(argv[1], options, argv_vector, this->arguments);
         }
     };
 }//namespace coc

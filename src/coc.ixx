@@ -1,4 +1,4 @@
-module;
+
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -8,8 +8,8 @@ module;
 export module coc;
 
 using namespace std;
-#undef NULL
-#define NULL '\0'
+#undef COC_NULL_CHAR
+#define COC_NULL_CHAR '\0'
 namespace coc {
     // export class Options;
     // export class Arguments;
@@ -105,7 +105,7 @@ namespace coc {
                     string options_str=str.substr(1,str.size()-1);
                     for (auto iter_str: options_str) {
                         for (auto iter_opt: this->options) {
-                            if (iter_opt->short_cut != NULL && iter_str == iter_opt->short_cut) {
+                            if (iter_opt->short_cut != COC_NULL_CHAR && iter_str == iter_opt->short_cut) {
                                 this->options_u.push_back(iter_opt);//add option ptr to options_u
                                 error = false;
                             }
@@ -357,6 +357,9 @@ namespace coc {
         Arguments& arguments;
         Values& values;
         vector<string>& argv;
+        Getter(Options& options,Arguments& arguments,Values& values,vector<string>& argv):
+            options(options),arguments(arguments),values(values),argv(argv)
+        {}
     };
 
     //action function pointer
@@ -406,7 +409,7 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        inline Action* addOption(string&& name,string &&describe,int number,char short_cut=NULL){
+        inline Action* addOption(string&& name,string &&describe,int number,char short_cut= COC_NULL_CHAR){
             this->options->addOption(name,describe,number,short_cut);
             return this;
         }
@@ -426,7 +429,7 @@ namespace coc {
         map<string, Action*> actions;
 
         //if error,the function will return false
-        inline int run(string&& action_name,vector<string>& options,vector<string>& argv,Arguments *arguments) {
+        int run(string&& action_name,vector<string>& options,vector<string>& argv,Arguments *arguments) {
             /*
             * in this step complete:
             * find the designated action
@@ -436,13 +439,25 @@ namespace coc {
              * after that
              * call action's run()
              */
+
+            //if it's only one letter ,then it maybe shortcut
+            if(action_name.size()==1){
+                for(auto &[k,v]: this->actions){
+                    //if it has shortcut and the action name equal to shortcut
+                    if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
+                        return v->run(options,argv,arguments);
+                    }
+                }
+            }
             auto p = this->actions.find(action_name);
             if (p == this->actions.end()) {
+
                 log->notFoundAction(action_name);
                 return -1;
             }
             return this->actions[action_name]->run(options,argv,arguments);
         }
+
     public:
         Actions():
                log(nullptr),config(nullptr),global(nullptr),actions(map<string, Action*>())
@@ -457,7 +472,7 @@ namespace coc {
         }
 
         //add an action
-        inline Action* addAction(string& action_name,string& describe,action_fun af,char short_cut=NULL){
+        inline Action* addAction(string& action_name,string& describe,action_fun af,char short_cut= COC_NULL_CHAR){
             auto p =new Action(describe,af,short_cut,this->config,this->log);
             p->config=this->config;
             p->log=this->log;
@@ -531,7 +546,7 @@ namespace coc {
             this->config=p;
         }
         //only package with a layer
-        inline Action* addAction(string&& action_name,string&& describe,action_fun af,char short_cut=NULL){
+        inline Action* addAction(string&& action_name,string&& describe,action_fun af,char short_cut= COC_NULL_CHAR){
             return this->actions->addAction(action_name,describe,af,short_cut);
         }
         //only package with a layer
@@ -603,7 +618,7 @@ namespace coc {
                 }
             }
             //run global
-            if(this->config->is_global_action&&argv[1][0]=='-'){
+            if(this->config->is_global_action&&(argv[1][0]=='-'||argv[1][0]== COC_NULL_CHAR)){
                 return this->get_global_actions()->run(options, argv_vector, this->arguments);
             }
             return this->actions->run(argv[1], options, argv_vector, this->arguments);
