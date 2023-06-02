@@ -16,7 +16,7 @@ namespace coc {
     // export class Values;
     export struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
-        bool intellisense=true;//not supported now
+        bool intellisense_mode=true;//not supported now
         bool is_global_action=true;
         bool is_exit_if_not_found_option=true;
         bool argument_need_extern=true;
@@ -165,6 +165,96 @@ namespace coc {
         }
     };
 
+    export class Values{
+        friend class Action;
+        friend class Parser;
+    private:
+        struct Value{
+            string value_name,value_log,value_type,describe,default_value;
+            Value(string& value_name,string& value_log,string& value_type,string& describe,string& default_value):
+                 value_name(value_name),value_log(value_log),value_type(value_type),describe(describe),default_value(default_value)
+            {}
+        };
+        vector<Value*> values;
+        map<string,string> values_u;
+        ParserConfig* config;
+        Log* log;
+
+        //add a value to list
+        inline void addValue(string& value_name,string& value_log,string& value_type,string& describe,string& default_value){
+            this->values.push_back(new Values::Value(value_name,value_log,value_type,describe,default_value));
+        }
+        //put run and get value that user input
+        bool run(){
+            /*
+            * in this step complete:
+            * Analysis of values
+            */
+
+            /*
+             * after that
+             * call none
+             */
+            string buff;
+            for(auto iter:this->values){
+                log->valueLog(iter->value_log,iter->default_value);
+                getline(std::cin,buff);
+                if(buff.empty()){
+                    if(iter->default_value.empty()){
+                        log->noValueEntered(iter->value_name);
+                        return false;
+                    }
+                    else{
+                        this->values_u[iter->value_name]=iter->default_value;
+                        continue;
+                    }
+                }
+                this->values_u[iter->value_name]=buff;
+            }
+            return true;
+        }
+    public:
+        Values():
+                   config(nullptr),log(nullptr)
+        {}
+        ~Values(){
+            for(auto&p:values){
+                delete p;
+                p= nullptr;
+            }
+        }
+        //the first is value.if the second is false,it means that the value was not found
+        inline int getInt(const string& name){
+            return stoi(this->values_u[name]);
+        }
+        inline float getFloat(const string& name){
+            return stof(this->values_u[name]);
+        }
+        inline char getChar(const string& name){
+            return this->values_u[name][0];
+        }
+        inline bool getBool(const string& name){
+            string& buff=this->values_u[name];
+            if(buff=="FALSE"||buff=="False"||buff=="false"||buff=="0")
+                return false;
+            else
+                return true;
+        }
+        inline string getString(const string& name){
+            return this->values_u[name];
+        }
+    };
+
+    export class Targets{
+        friend class Action;
+        friend class Parser;
+    private:
+        struct Target{
+
+        };
+
+    };
+
     export class Arguments{
         friend class Parser;
     private:
@@ -272,96 +362,6 @@ namespace coc {
         }
     };
 
-    export class Values{
-        friend class Action;
-        friend class Parser;
-    private:
-        struct Value{
-            string value_name,value_log,value_type,describe,default_value;
-            Value(string& value_name,string& value_log,string& value_type,string& describe,string& default_value):
-                  value_name(value_name),value_log(value_log),value_type(value_type),describe(describe),default_value(default_value)
-            {}
-        };
-        vector<Value*> values;
-        map<string,string> values_u;
-        ParserConfig* config;
-        Log* log;
-
-        //add a value to list
-        inline void addValue(string& value_name,string& value_log,string& value_type,string& describe,string& default_value){
-            this->values.push_back(new Values::Value(value_name,value_log,value_type,describe,default_value));
-        }
-        //put run and get value that user input
-        bool run(){
-            /*
-            * in this step complete:
-            * Analysis of values
-            */
-
-            /*
-             * after that
-             * call none
-             */
-            string buff;
-            for(auto iter:this->values){
-                log->valueLog(iter->value_log,iter->default_value);
-                getline(std::cin,buff);
-                if(buff.empty()){
-                    if(iter->default_value.empty()){
-                        log->noValueEntered(iter->value_name);
-                        return false;
-                    }
-                    else{
-                        this->values_u[iter->value_name]=iter->default_value;
-                        continue;
-                    }
-                }
-                this->values_u[iter->value_name]=buff;
-            }
-            return true;
-        }
-    public:
-        Values():
-              config(nullptr),log(nullptr)
-        {}
-        ~Values(){
-            for(auto&p:values){
-                delete p;
-                p= nullptr;
-            }
-        }
-        //the first is value.if the second is false,it means that the value was not found
-        inline int getInt(const string& name){
-            return stoi(this->values_u[name]);
-        }
-        inline float getFloat(const string& name){
-            return stof(this->values_u[name]);
-        }
-        inline char getChar(const string& name){
-            return this->values_u[name][0];
-        }
-        inline bool getBool(const string& name){
-            string& buff=this->values_u[name];
-            if(buff=="FALSE"||buff=="False"||buff=="false"||buff=="0")
-                return false;
-            else
-                return true;
-        }
-        inline string getString(const string& name){
-            return this->values_u[name];
-        }
-    };
-
-    export class Targets{
-        friend class Action;
-        friend class Parser;
-    private:
-        struct Target{
-
-        };
-
-    };
-
     export struct Getter{
         Options* opt;
         Values* val;
@@ -408,10 +408,10 @@ namespace coc {
         Action(string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
               describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
         {
-            this->values->config=this->config;
-            this->values->log=this->log;
-            this->options->config=this->config;
-            this->options->log=this->log;
+            this->values->config=config;
+            this->values->log=log;
+            this->options->config=config;
+            this->options->log=log;
         }
         ~Action(){
             delete this->options;
@@ -483,11 +483,9 @@ namespace coc {
 
         //add an action
         inline Action* addAction(string& action_name,string& describe,action_fun af,char short_cut= COC_NULL_CHAR){
-            auto p =new Action(describe,af,short_cut,this->config,this->log);
-            p->config=this->config;
-            p->log=this->log;
-            this->actions[action_name]=p;
-            return p;
+            auto action =new Action(describe,af,short_cut,this->config,this->log);
+            this->actions[action_name]=action;
+            return action;
         }
     };
 
@@ -508,25 +506,15 @@ namespace coc {
             }
         }
     public:
-        Parser(): hf(nullptr){
-            this->config = new ParserConfig;
-            this->log = new Log;
-            this->arguments=new Arguments;
-            this->actions=new Actions;
-            this->arguments->config=this->config;
-            this->arguments->log=this->log;
-            this->actions->config=this->config;
-            this->actions->log=this->log;
-        }
         Parser(ParserConfig *config,Log* log):
                config(config),log(log), hf(nullptr)
         {
             this->arguments=new Arguments;
             this->actions=new Actions;
-            this->arguments->config=this->config;
-            this->arguments->log=this->log;
-            this->actions->config=this->config;
-            this->actions->log=this->log;
+            this->arguments->config=config;
+            this->arguments->log=log;
+            this->actions->config=config;
+            this->actions->log=log;
         }
 
         ~Parser(){

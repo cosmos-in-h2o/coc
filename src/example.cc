@@ -8,25 +8,25 @@ using namespace coc;
 void test(Getter g){
     cout<<"-----------------------------------\n";
     cout<<"options test:\n";
-    for(auto iter:g.options.get_list()){
+    for(auto iter:g.opt->get_list()){
         cout<<iter->name<<"\n";
     }
     cout<<"-----------------------------------\n";
     cout<<"arguments test\n";
-    cout<<"arguments bool test:"<<g.arguments.getBool("BOOL",true)<<"\n";
-    cout<<"arguments int test:"<<g.arguments.getInt("INT",-1)<<"\n";
-    cout<<"arguments char test:"<<g.arguments.getChar("CHAR",'t')<<"\n";
-    cout<<"arguments string test:"<<g.arguments.getString("STRING","string")<<"\n";
-    cout<<"arguments float test:"<<g.arguments.getFloat("FLOAT",-1.1f)<<"\n";
+    cout<<"arguments bool test:"<<g.arg->getBool("BOOL",true)<<"\n";
+    cout<<"arguments int test:"<<g.arg->getInt("INT",-1)<<"\n";
+    cout<<"arguments char test:"<<g.arg->getChar("CHAR",'t')<<"\n";
+    cout<<"arguments string test:"<<g.arg->getString("STRING","string")<<"\n";
+    cout<<"arguments float test:"<<g.arg->getFloat("FLOAT",-1.1f)<<"\n";
 
     cout<<"-----------------------------------\n";
     cout<<"value test:\n";
-    cout<<"default value:"<<g.values.getString("value1")<<"\n";
-    cout<<"value:"<<g.values.getString("value2")<<"\n";
+    cout<<"default value:"<<g.val->getString("value1")<<"\n";
+    cout<<"value:"<<g.val->getString("value2")<<"\n";
 
     cout<<"-----------------------------------\n";
     cout<<"argv test:\n";
-    for(auto &iter:g.argv){
+    for(auto &iter:*(g.tar)){
         cout<<iter<<'\n';
     }
 }
