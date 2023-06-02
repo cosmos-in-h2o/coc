@@ -11,9 +11,8 @@ using namespace std;
 #undef COC_NULL_CHAR
 #define COC_NULL_CHAR '\0'
 namespace coc {
-    // export class Options;
-    // export class Arguments;
-    // export class Values;
+    export class Parser;
+
     export struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool intellisense_mode=true;//not supported now
@@ -28,6 +27,8 @@ namespace coc {
                 "\t \\____\\___/ \\____|\n"
                 "\t\t\tcoc by dream727\n"
                 "==> https://github.com/dream727/coc";//your app's version
+        string introduce="";
+        string usage="";
         char argument_mark='D';//-[argument_mark] mark as argument
     };
 
@@ -56,11 +57,13 @@ namespace coc {
         virtual inline void globalActionNotDoesNotExist(){
             cout<<"Error:Global action doesn't exist.\n";
         }
+
     };
 
     class Options{
         friend class Action;
         friend class Parser;
+        friend struct HelpFunc;
     private:
         struct Option{
             string name,describe;
@@ -188,6 +191,7 @@ namespace coc {
     class Values{
         friend class Action;
         friend class Parser;
+        friend struct HelpFunc;
     private:
         struct Value{
             string value_name,value_log,value_type,describe,default_value;
@@ -277,6 +281,7 @@ namespace coc {
 
     class Arguments{
         friend class Parser;
+        friend struct HelpFunc;
     private:
         struct Argument{
             string argument_type,describe;
@@ -402,6 +407,7 @@ namespace coc {
     class Action{
         friend class Actions;
         friend class Parser;
+        friend struct HelpFunc;
     private:
         string describe;
         action_fun af;
@@ -470,6 +476,7 @@ namespace coc {
 
     export class Actions{
         friend class Parser;
+        friend struct HelpFunc;
     private:
         Log* log;
         ParserConfig *config;
@@ -546,7 +553,8 @@ namespace coc {
         }
     };
 
-    export class Parser{
+    class Parser{
+        friend struct HelpFunc;
     public:
         typedef void(*help_fun)(Parser*);
     private:
@@ -691,6 +699,57 @@ namespace coc {
             }
             return this->actions->run(argv[1], options, target, this->arguments);
 
+        }
+    };
+
+    export struct HelpFunc{
+        ParserConfig* config;
+        Parser* parser;
+
+        void helpFunc(){
+            cout<<config->logo_and_version<<'\n';
+            if(!config->introduce.empty()){
+                cout<<config->introduce<<'\n';
+            }
+            if(!config->usage.empty()){
+                cout<<config->usage<<'\n';
+            }
+            if(!parser->actions->actions.empty()) {
+                cout << "Actions:\n";
+                for (auto &[k, v]: parser->actions->actions) {
+                    if (v->short_cut != COC_NULL_CHAR)
+                        cout << '\t' << v->short_cut << ',';
+                    else
+                        cout << '\t' << "  ";
+                    cout << k << '\t' << v->describe << '\n';
+                }
+            }
+            if(!parser->actions->global->options->options.empty()) {
+                cout << "Options(Global):\n";
+                for (auto p: parser->actions->global->options->options) {
+                    if (p->short_cut != COC_NULL_CHAR)
+                        cout << "\t-" << p->short_cut << ',';
+                    else
+                        cout << '\t' << "   ";
+                    cout << "--" << p->name << '\t' << p->describe << '\n';
+                }
+            }
+            if(!parser->actions->global->values->values.empty()){
+                cout<<"Values(Global):\n";
+                for (auto p: parser->actions->global->values->values) {
+                    cout<<'\t' <<p->value_name<<"\tType:"<<p->value_type<<'\t'<< p->describe;
+                    if(!p->default_value.empty()){
+                        cout<<"\tDefault="<<p->default_value;
+                    }
+                    cout<<'\n';
+                }
+            }
+            if(!parser->arguments->arguments.empty()){
+                cout<<"Arguments:\n";
+                for (auto &[k,v]: parser->arguments->arguments) {
+                    cout<<'\t' <<k<<"\tType:"<<v->argument_type<<'\t'<<v->describe <<'\n';
+                }
+            }
         }
     };
 }//namespace coc
