@@ -352,13 +352,23 @@ namespace coc {
         }
     };
 
+    export class Targets{
+        friend class Action;
+        friend class Parser;
+    private:
+        struct Target{
+
+        };
+
+    };
+
     export struct Getter{
-        Options& options;
-        Arguments& arguments;
-        Values& values;
-        vector<string>& argv;
-        Getter(Options& options,Arguments& arguments,Values& values,vector<string>& argv):
-            options(options),arguments(arguments),values(values),argv(argv)
+        Options* opt;
+        Values* val;
+        Arguments* arg;
+        vector<string>* tar;
+        Getter(Options* options,Values* values,Arguments* arguments,vector<string>* targets):
+            opt(options),val(values),arg(arguments),tar(targets)
         {}
     };
 
@@ -377,7 +387,7 @@ namespace coc {
         //pass down
         ParserConfig *config;
         Log *log;
-        inline int run(vector<string>& options_argv,vector<string>& argv, Arguments *arguments){
+        inline int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments){
             /*
             * in this step complete:
             * do nothing,only call function
@@ -391,7 +401,7 @@ namespace coc {
 
             if(!this->options->run(options_argv)) return -1;
             if(!this->values->run()) return -1;
-            this->af(Getter(*(this->options),*(arguments),*(this->values),argv));
+            this->af(Getter(this->options,this->values,arguments,&target));
             return 1;
         }
     public:
@@ -429,7 +439,7 @@ namespace coc {
         map<string, Action*> actions;
 
         //if error,the function will return false
-        int run(string&& action_name,vector<string>& options,vector<string>& argv,Arguments *arguments) {
+        int run(string&& action_name,vector<string>& options,vector<string>&target,Arguments *arguments) {
             /*
             * in this step complete:
             * find the designated action
@@ -445,7 +455,7 @@ namespace coc {
                 for(auto &[k,v]: this->actions){
                     //if it has shortcut and the action name equal to shortcut
                     if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
-                        return v->run(options,argv,arguments);
+                        return v->run(options, target,arguments);
                     }
                 }
             }
@@ -455,7 +465,7 @@ namespace coc {
                 log->notFoundAction(action_name);
                 return -1;
             }
-            return this->actions[action_name]->run(options,argv,arguments);
+            return this->actions[action_name]->run(options, target,arguments);
         }
 
     public:
@@ -508,8 +518,8 @@ namespace coc {
             this->actions->config=this->config;
             this->actions->log=this->log;
         }
-        Parser(ParserConfig *p,Log* log):
-               config(p),log(log), hf(nullptr)
+        Parser(ParserConfig *config,Log* log):
+               config(config),log(log), hf(nullptr)
         {
             this->arguments=new Arguments;
             this->actions=new Actions;
@@ -595,7 +605,7 @@ namespace coc {
             //determine is the global action
             vector<string> all_argv;//all cmd argv
             vector<string> options;
-            vector<string> argv_vector;//argv except options and arguments
+            vector<string> target;//argv except options and arguments
             int i=1;
             //if it isn't the global action, then read from index of 2
             if(argv[1][0]!='-') i=2;
@@ -614,14 +624,14 @@ namespace coc {
                     }
                 }
                 else {
-                    argv_vector.push_back(p);
+                    target.push_back(p);
                 }
             }
             //run global
             if(this->config->is_global_action&&(argv[1][0]=='-'||argv[1][0]== COC_NULL_CHAR)){
-                return this->get_global_actions()->run(options, argv_vector, this->arguments);
+                return this->get_global_actions()->run(options, target, this->arguments);
             }
-            return this->actions->run(argv[1], options, argv_vector, this->arguments);
+            return this->actions->run(argv[1], options, target, this->arguments);
         }
     };
 }//namespace coc
