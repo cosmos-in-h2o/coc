@@ -17,7 +17,6 @@ namespace coc {
     export struct ParserConfig{
         bool is_help_logs=true;//if open help logs.
         bool intellisense_mode=true;//not supported now
-        bool is_global_action=true;
         bool is_exit_if_not_found_option=true;
         bool argument_need_extern=true;
         string logo_and_version=
@@ -54,9 +53,12 @@ namespace coc {
                 temp="(default="+default_value+")";
             printf("%s%s:\n",value_log.c_str(),temp.c_str());
         }
+        virtual inline void globalActionNotDoesNotExist(){
+            cout<<"Error:Global action doesn't exist.\n";
+        }
     };
 
-    export class Options{
+    class Options{
         friend class Action;
         friend class Parser;
     private:
@@ -160,12 +162,30 @@ namespace coc {
             }
             return false;
         }
+        inline bool isOnlyOpt(const string& option){
+            if(this->options_u.size()==1) {
+                for (auto iter: this->options_u) {
+                    if (iter->name == option)
+                        return true;
+                }
+            }
+            return false;
+        }
+        inline bool isOnlyOpt(char short_cut){
+            if(this->options_u.size()==1) {
+                for (auto iter: this->options_u) {
+                    if (iter->short_cut == short_cut)
+                        return true;
+                }
+            }
+            return false;
+        }
         inline vector<Option*> get_list(){
             return this->options_u;
         }
     };
 
-    export class Values{
+    class Values{
         friend class Action;
         friend class Parser;
     private:
@@ -245,7 +265,7 @@ namespace coc {
         }
     };
 
-    export class Targets{
+    class Targets{
         friend class Action;
         friend class Parser;
     private:
@@ -255,7 +275,7 @@ namespace coc {
 
     };
 
-    export class Arguments{
+    class Arguments{
         friend class Parser;
     private:
         struct Argument{
@@ -367,6 +387,10 @@ namespace coc {
         Values* val;
         Arguments* arg;
         vector<string>* tar;
+        bool is_empty=false;
+        Getter(Values* values):
+            is_empty(true),opt(nullptr),val(values),arg(nullptr),tar(nullptr)
+        {}
         Getter(Options* options,Values* values,Arguments* arguments,vector<string>* targets):
             opt(options),val(values),arg(arguments),tar(targets)
         {}
@@ -387,6 +411,11 @@ namespace coc {
         //pass down
         ParserConfig *config;
         Log *log;
+        inline int run(){
+            if(!this->values->run()) return -1;
+            this->af(Getter(this->values));
+            return 0;
+        }
         inline int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments){
             /*
             * in this step complete:
@@ -402,9 +431,18 @@ namespace coc {
             if(!this->options->run(options_argv)) return -1;
             if(!this->values->run()) return -1;
             this->af(Getter(this->options,this->values,arguments,&target));
-            return 1;
+            return 0;
         }
     public:
+        Action(action_fun& af,char short_cut,ParserConfig*config,Log*log):
+              describe(""),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
+        {
+            this->values->config=config;
+            this->values->log=log;
+            this->options->config=config;
+            this->options->log=log;
+        }
+
         Action(string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
               describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
         {
@@ -438,6 +476,25 @@ namespace coc {
         Action* global;
         map<string, Action*> actions;
 
+        int run(string&& action_name){
+            if(action_name.size()==1){
+                for(auto &[k,v]: this->actions){
+                    //if it has shortcut and the action name equal to shortcut
+                    if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
+                        v->run();
+                        return 0;
+                    }
+                }
+            }
+            auto p = this->actions.find(action_name);
+            if (p == this->actions.end()) {
+
+                log->notFoundAction(action_name);
+                return -1;
+            }
+            p->second->run();
+            return 0;
+        }
         //if error,the function will return false
         int run(string&& action_name,vector<string>& options,vector<string>&target,Arguments *arguments) {
             /*
@@ -465,7 +522,7 @@ namespace coc {
                 log->notFoundAction(action_name);
                 return -1;
             }
-            return this->actions[action_name]->run(options, target,arguments);
+            return p->second->run(options, target,arguments);
         }
 
     public:
@@ -561,10 +618,10 @@ namespace coc {
             return this->log;
         }
 
-        inline Action* get_global_actions(){
-            if(this->config->is_global_action)
-                return this->actions->global;
-            return nullptr;
+        inline Action* set_global_actions(action_fun af){
+            if(this->actions->global==nullptr)
+                this->actions->global=new Action(af,COC_NULL_CHAR,this->config,this->log);
+            return this->actions->global;
         }
 
         inline Arguments* get_argument(){
@@ -590,7 +647,15 @@ namespace coc {
              * call arguments' run()
              */
 
-            //determine is the global action
+            //optimize
+            if(argc==1&&this->actions->global!=nullptr){
+                return this->actions->global->run();
+            }
+            if(argc==2&&argv[1][0]!='-'){
+                return this->actions->run(argv[1]);
+            }
+
+            //analyse
             vector<string> all_argv;//all cmd argv
             vector<string> options;
             vector<string> target;//argv except options and arguments
@@ -600,7 +665,6 @@ namespace coc {
             for (; i < argc; ++i) {
                 all_argv.emplace_back(argv[i]);
             }
-
             for(auto&p:all_argv){
                 if(p[0]=='-') {
                     if (p[1] == this->config->argument_mark) {
@@ -615,11 +679,18 @@ namespace coc {
                     target.push_back(p);
                 }
             }
-            //run global
-            if(this->config->is_global_action&&(argv[1][0]=='-'||argv[1][0]== COC_NULL_CHAR)){
-                return this->get_global_actions()->run(options, target, this->arguments);
+            //execute
+            if(argv[1][0]=='-'){
+                if(this->actions->global==nullptr) {
+                    this->log->globalActionNotDoesNotExist();
+                    return -1;
+                }
+                else {
+                    return this->actions->global->run(options, target, this->arguments);
+                }
             }
             return this->actions->run(argv[1], options, target, this->arguments);
+
         }
     };
 }//namespace coc
