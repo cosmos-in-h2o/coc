@@ -14,7 +14,6 @@ namespace coc {
     export class Parser;
     class Values;
     export struct ParserConfig{
-        bool is_help_logs=true;//if open help logs.
         bool intellisense_mode=true;//not supported now
         bool is_exit_if_not_found_option=true;
         bool argument_need_extern=true;
@@ -61,6 +60,7 @@ namespace coc {
     };
 
     class Options{
+        friend struct Targets;
         friend class IAction;
         friend class AAction;
         friend class HelpAction;
@@ -279,9 +279,26 @@ namespace coc {
         friend class Parser;
     private:
         struct Target{
-
+            vector<string> option_name;
+            vector<string>target_list;
         };
+        vector<Target*>targets_list;
+        int run(vector<vector<string>&>& targets,string){
 
+        }
+    public:
+        const string& at(int index,const string &_default){
+            return _default;
+        }
+        const string& at(const string&option_name,int index,const string&_default){
+            return _default;
+        }
+        const string& atOutRange(const string&option_name,int index,const string&_default){
+            return _default;
+        }
+        int size(const string& option_name){
+
+        }
     };
 
     class Arguments{
@@ -786,7 +803,6 @@ namespace coc {
 
         }
     };
-
 
     export struct HelpFunc:public IHelpFunc{
         void run(Getter g) override{
