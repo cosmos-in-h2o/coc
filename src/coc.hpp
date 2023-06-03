@@ -64,9 +64,9 @@ namespace coc {
         struct Option{
             std::string name,describe;
             int number;
-            char short_cut;
+            char short_name;
             Option(std::string& name,std::string& describe,int number,char short_cut):
-                                                                                           name(name),describe(describe),number(number),short_cut(short_cut)
+                                                                                           name(name),describe(describe),number(number), short_name(short_cut)
             {}
         };
         ParserConfig *config;
@@ -107,7 +107,7 @@ namespace coc {
                     bool error = true;
                     for (auto iter_str: options_str) {
                         for (auto iter_opt: this->options) {
-                            if (iter_opt->short_cut != COC_NULL_CHAR && iter_str == iter_opt->short_cut) {
+                            if (iter_opt->short_name != COC_NULL_CHAR && iter_str == iter_opt->short_name) {
                                 this->options_u.push_back(iter_opt);//add option ptr to options_u
                                 error = false;
                             }
@@ -134,7 +134,7 @@ namespace coc {
         {}
 
         ~Options(){
-            for(auto p:this->options){
+            for(auto& p:this->options){
                 delete p;
                 p=nullptr;
             }
@@ -149,18 +149,14 @@ namespace coc {
             return this->at(index);
         }
         inline bool getOption(const std::string& option){
-            for(auto iter:this->options_u){
-                if(iter->name==option)
-                    return true;
-            }
-            return false;
+            return std::ranges::any_of(this->options_u, [&](auto iter) {
+                return iter->name == option;
+            });
         }
         inline bool getOption(char short_cut){
-            for(auto iter:this->options_u){
-                if(iter->short_cut==short_cut)
-                    return true;
-            }
-            return false;
+            return std::ranges::any_of(this->options_u, [&](auto iter) {
+                return iter->short_name == short_cut;
+            });
         }
         inline std::vector<Option*> get_list(){
             return this->options_u;
@@ -174,7 +170,7 @@ namespace coc {
             std::string argument_type,describe;
 
             Argument(std::string& argument_type,std::string& describe):
-                                                                          argument_type(argument_type),describe(describe)
+                    argument_type(argument_type),describe(describe)
             {}
         };
 
@@ -203,9 +199,9 @@ namespace coc {
 
             buff = argv.substr(2, argv.size() - 2);
             //SIGN:if not found '=' give an error
-            for (int i = 0; i < buff.size(); ++i) {
-                if(buff[i]=='='){
-                    buff[i]=' ';
+            for (char & i : buff) {
+                if(i=='='){
+                    i=' ';
                 }
             }
             std::istringstream ss=std::istringstream(buff);
@@ -412,13 +408,13 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        inline Action* addOption(std::string&& name,std::string &&describe,int number,char short_cut= COC_NULL_CHAR){
-            this->options->addOption(name,describe,number,short_cut);
+        inline Action* addOption(std::string&& m_name,std::string &&m_describe,int m_number,char m_short_cut = COC_NULL_CHAR){
+            this->options->addOption(m_name, m_describe, m_number, m_short_cut);
             return this;
         }
 
-        inline Action* addValue(std::string&& value_name,std::string&& log,std::string&& value_type,std::string&& describe,std::string&& default_value=""){
-            this->values->addValue(value_name,log,value_type,describe,default_value);
+        inline Action* addValue(std::string&& value_name,std::string&& m_log,std::string&& value_type,std::string&& m_describe,std::string&& default_value=""){
+            this->values->addValue(value_name,m_log,value_type,m_describe,default_value);
             return this;
         }
     };
@@ -500,23 +496,14 @@ namespace coc {
     };
 
     class Parser{
-    public:
-        typedef void(*help_fun)(Parser*);
     private:
         ParserConfig *config;
         Log *log;
         bool is_def_hp = true;//if open default function
-        help_fun hf;
         Actions *actions;
         Arguments *arguments;
-        void help(){
-            if(!this->is_def_hp){
-                this->hf(this);
-                return;
-            }
-        }
     public:
-        Parser(): hf(nullptr){
+        Parser(){
             this->config = new ParserConfig;
             this->log = new Log;
             this->arguments=new Arguments;
@@ -527,7 +514,7 @@ namespace coc {
             this->actions->log=this->log;
         }
         Parser(ParserConfig *p,Log* log):
-                                            config(p),log(log), hf(nullptr)
+                                            config(p),log(log)
         {
             this->arguments=new Arguments;
             this->actions=new Actions;
@@ -554,14 +541,14 @@ namespace coc {
             this->log= nullptr;
         }
         //over log
-        void loadLog(Log* log){
+        void loadLog(Log* m_log){
             delete this->log;
-            this->log=log;
+            this->log=m_log;
         }
         //over config
-        void loadConfig(ParserConfig *p){
+        void loadConfig(ParserConfig *m_config){
             delete this->config;
-            this->config=p;
+            this->config=m_config;
         }
         //only package with a layer
         inline Action* addAction(std::string&& action_name,std::string&& describe,action_fun af,char short_cut= COC_NULL_CHAR){
@@ -589,11 +576,6 @@ namespace coc {
 
         inline Arguments* get_argument(){
             return this->arguments;
-        }
-        //set help function
-        void set_help(help_fun &hf){
-            this->is_def_hp= false;
-            this->hf = hf;
         }
 
         int run(int argc,char** argv) {

@@ -1,4 +1,4 @@
-
+module;
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -27,8 +27,8 @@ namespace coc {
                 "\t \\____\\___/ \\____|\n"
                 "\t\t\tcoc by dream727\n"
                 "==> https://github.com/dream727/coc";//your app's version
-        string introduce="";
-        string usage="";
+        string introduce;
+        string usage;
         char argument_mark='D';//-[argument_mark] mark as argument
     };
 
@@ -68,9 +68,9 @@ namespace coc {
         struct Option{
             string name,describe;
             int number;
-            char short_cut;
-            Option(string& name,string& describe,int number,char short_cut):
-                  name(name),describe(describe),number(number),short_cut(short_cut)
+            char short_name;
+            Option(string& name,string& describe,int number,char short_name):
+                  name(name),describe(describe),number(number), short_name(short_name)
             {}
         };
         ParserConfig *config;
@@ -78,8 +78,8 @@ namespace coc {
         vector<Option*> options;//options list
         vector<Option*> options_u;//user options list
         //add an option to options list
-        inline void addOption(string& name,string& describe,int number,char short_cut){
-            auto p=new Option(name,describe,number,short_cut);
+        inline void addOption(string& name,string& describe,int number,char short_name){
+            auto p=new Option(name,describe,number, short_name);
             this->options.push_back(p);
         }
         //add options_argv which user input.
@@ -110,7 +110,7 @@ namespace coc {
                     string options_str=str.substr(1,str.size()-1);
                     for (auto iter_str: options_str) {
                         for (auto iter_opt: this->options) {
-                            if (iter_opt->short_cut != COC_NULL_CHAR && iter_str == iter_opt->short_cut) {
+                            if (iter_opt->short_name != COC_NULL_CHAR && iter_str == iter_opt->short_name) {
                                 this->options_u.push_back(iter_opt);//add option ptr to options_u
                                 error = false;
                             }
@@ -137,7 +137,7 @@ namespace coc {
         {}
 
         ~Options(){
-            for(auto p:this->options){
+            for(auto& p:this->options){
                 delete p;
                 p=nullptr;
             }
@@ -152,18 +152,14 @@ namespace coc {
             return this->at(index);
         }
         inline bool getOption(const string& option){
-            for(auto iter:this->options_u){
-                if(iter->name==option)
-                    return true;
-            }
-            return false;
+            return std::ranges::any_of(this->options_u, [&](auto iter) {
+                return iter->name == option;
+            });
         }
-        inline bool getOption(char short_cut){
-            for(auto iter:this->options_u){
-                if(iter->short_cut==short_cut)
-                    return true;
-            }
-            return false;
+        inline bool getOption(char short_name){
+            return std::ranges::any_of(this->options_u, [&](auto iter) {
+                return iter->short_name == short_name;
+            });
         }
         inline bool isOnlyOpt(const string& option){
             if(this->options_u.size()==1) {
@@ -174,10 +170,10 @@ namespace coc {
             }
             return false;
         }
-        inline bool isOnlyOpt(char short_cut){
+        inline bool isOnlyOpt(char short_name){
             if(this->options_u.size()==1) {
                 for (auto iter: this->options_u) {
-                    if (iter->short_cut == short_cut)
+                    if (iter->short_name == short_name)
                         return true;
                 }
             }
@@ -315,9 +311,9 @@ namespace coc {
             string buff;
 
             buff = argv.substr(2, argv.size() - 2);
-            for (int i = 0; i < buff.size(); ++i) {
-                if(buff[i]=='='){
-                    buff[i]=' ';
+            for (char & i : buff) {
+                if(i=='='){
+                    i=' ';
                 }
             }
             istringstream ss(buff);
@@ -393,7 +389,7 @@ namespace coc {
         Arguments* arg;
         vector<string>* tar;
         bool is_empty=false;
-        Getter(Values* values):
+        explicit Getter(Values* values):
             is_empty(true),opt(nullptr),val(values),arg(nullptr),tar(nullptr)
         {}
         Getter(Options* options,Values* values,Arguments* arguments,vector<string>* targets):
@@ -417,12 +413,12 @@ namespace coc {
         virtual IAction* addOption(string&& name,string &&describe,int number,char short_cut=COC_NULL_CHAR)=0;
         virtual IAction* addValue(string&& value_name,string&& log,string&& value_type,string&& describe,string&& default_value="")=0;
 
-        virtual ~IAction(){}
+        virtual ~IAction()= default;
     };
 
     struct IHelpFunc{
         virtual void helpFunc()=0;
-        virtual ~IHelpFunc(){}
+        virtual ~IHelpFunc()= default;
     };
 
     class HelpAction:public IAction{
@@ -441,7 +437,7 @@ namespace coc {
         HelpAction(string& describe,IHelpFunc*hf):
                    describe(describe),hf(hf)
         {}
-        ~HelpAction(){
+        ~HelpAction() override{
             delete this->hf;
             hf=nullptr;
         }
@@ -458,10 +454,6 @@ namespace coc {
         action_fun af;
         Options* options;
         Values* values;
-        //pass down
-        ParserConfig *config;
-        Log *log;
-
     private:
         inline int run() override {
             if (!this->values->run()) return -1;
@@ -486,9 +478,9 @@ namespace coc {
             return 0;
         }
     public:
-        inline const string & get_describe() override{return ""s;}
-        inline IAction* addOption(string&& name,string &&describe,int number,char short_cut)override{
-            this->options->addOption(name,describe,number,short_cut);
+        inline const string & get_describe() override{return "null"s;}
+        inline IAction* addOption(string&& name,string &&describe,int number,char short_name)override{
+            this->options->addOption(name,describe,number, short_name);
             return this;
         }
 
@@ -497,7 +489,7 @@ namespace coc {
             return this;
         }
         AAction(action_fun& af,char short_cut,ParserConfig*config,Log*log):
-               af(af),options(new Options),values(new Values),config(config),log(log)
+               af(af),options(new Options),values(new Values)
         {
             this->short_cut=short_cut;
             this->values->config=config;
@@ -505,7 +497,7 @@ namespace coc {
             this->options->config=config;
             this->options->log=log;
         }
-        virtual ~AAction(){
+        ~AAction() override{
             delete this->options;
             this->options=nullptr;
             delete this->values;
@@ -604,7 +596,7 @@ namespace coc {
         }
 
         //add an action
-        inline Action* addAction(string& action_name,string& describe,action_fun af,char short_cut= COC_NULL_CHAR){
+        inline IAction* addAction(string& action_name,string& describe,action_fun af,char short_cut= COC_NULL_CHAR){
             auto action =new Action(describe,af,short_cut,this->config,this->log);
             this->actions[action_name]=action;
             return action;
@@ -656,18 +648,18 @@ namespace coc {
             delete this->log;
             this->log= nullptr;
         }
-        //over log
-        void loadLog(Log* log){
+        //over m_log
+        void loadLog(Log*m_log){
             delete this->log;
-            this->log=log;
+            this->log= m_log;
         }
         //over config
-        void loadConfig(ParserConfig *p){
+        void loadConfig(ParserConfig *m_config){
             delete this->config;
-            this->config=p;
+            this->config= m_config;
         }
         //only package with a layer
-        inline Action* addAction(string&& action_name,string&& describe,action_fun af,char short_cut= COC_NULL_CHAR){
+        inline IAction* addAction(string&& action_name,string&& describe,action_fun af,char short_cut= COC_NULL_CHAR){
             return this->actions->addAction(action_name,describe,af,short_cut);
         }
         //only package with a layer
@@ -694,9 +686,9 @@ namespace coc {
             return this->arguments;
         }
         //set help function
-        void set_help(help_fun &hf){
+        void set_help(help_fun &m_hf){
             this->is_def_hp= false;
-            this->hf = hf;
+            this->hf = m_hf;
         }
 
         int run(int argc,char** argv) {
@@ -764,7 +756,7 @@ namespace coc {
         ParserConfig* config;
         Parser* parser;
 
-        void helpFunc(){
+        void helpFunc() override{
             cout<<config->logo_and_version<<'\n';
             if(!config->introduce.empty()){
                 cout<<config->introduce<<'\n';
@@ -785,8 +777,8 @@ namespace coc {
             if(!parser->actions->global->options->options.empty()) {
                 cout << "Options(Global):\n";
                 for (auto p: parser->actions->global->options->options) {
-                    if (p->short_cut != COC_NULL_CHAR)
-                        cout << "\t-" << p->short_cut << ',';
+                    if (p->short_name != COC_NULL_CHAR)
+                        cout << "\t-" << p->short_name << ',';
                     else
                         cout << '\t' << "   ";
                     cout << "--" << p->name << '\t' << p->describe << '\n';

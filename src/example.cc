@@ -71,8 +71,8 @@ int main(int argc,char**argv) {
     ParserConfig *config = new ParserConfig;
     Log *log = new Log;
     Parser parser(config, log);
-    parser.addAction("test", "this is a test", test,'t')
-            ->addOption("foption", "this is a option", 22, 'f')
+    parser.addAction("test", "this is a test", test)
+            ->addOption("foption", "this is a option", 22)
             ->addOption("soption", "this is a option", 33, 's')
             ->addValue("value1", "please input value1", "string", "this is a value")
             ->addValue("value2", "please input value2", "string", "this is a value", "value2");
