@@ -61,7 +61,7 @@ namespace coc {
     };
 
     class Options{
-        friend class Action;
+        friend class AAction;
         friend class Parser;
         friend struct HelpFunc;
     private:
@@ -189,7 +189,7 @@ namespace coc {
     };
 
     class Values{
-        friend class Action;
+        friend class AAction;
         friend class Parser;
         friend struct HelpFunc;
     private:
@@ -401,28 +401,74 @@ namespace coc {
         {}
     };
 
-    //action function pointer
+    //Action function pointer
     typedef void (*action_fun)(Getter);
 
-    class Action{
+    //Action interface
+    struct IAction{
+        friend class Actions;
+        friend struct HelpFunc;
+    protected:
+        virtual int run()=0;
+        virtual int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments)=0;
+        char short_cut;
+    public:
+        virtual const string& get_describe()=0;
+        virtual IAction* addOption(string&& name,string &&describe,int number,char short_cut=COC_NULL_CHAR)=0;
+        virtual IAction* addValue(string&& value_name,string&& log,string&& value_type,string&& describe,string&& default_value="")=0;
+
+        virtual ~IAction(){}
+    };
+
+    struct IHelpFunc{
+        virtual void helpFunc()=0;
+        virtual ~IHelpFunc(){}
+    };
+
+    class HelpAction:public IAction{
+    private:
+        string describe;
+        IHelpFunc* hf;
+        inline int run() override{
+            hf->helpFunc();
+            return 0;
+        }
+        int run(vector<std::string> &options_argv, vector<std::string> &target, coc::Arguments *arguments) override{
+            return 0;
+        }
+
+    public:
+        HelpAction(string& describe,IHelpFunc*hf):
+                   describe(describe),hf(hf)
+        {}
+        ~HelpAction(){
+            delete this->hf;
+            hf=nullptr;
+        }
+        inline const string& get_describe() override{
+            return this->describe;
+        }
+    };
+
+    class AAction: public IAction {
         friend class Actions;
         friend class Parser;
         friend struct HelpFunc;
-    private:
-        string describe;
+    protected:
         action_fun af;
-        char short_cut;
         Options* options;
         Values* values;
         //pass down
         ParserConfig *config;
         Log *log;
-        inline int run(){
-            if(!this->values->run()) return -1;
+
+    private:
+        inline int run() override {
+            if (!this->values->run()) return -1;
             this->af(Getter(this->values));
             return 0;
         }
-        inline int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments){
+        inline int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments) override{
             /*
             * in this step complete:
             * do nothing,only call function
@@ -440,37 +486,49 @@ namespace coc {
             return 0;
         }
     public:
-        Action(action_fun& af,char short_cut,ParserConfig*config,Log*log):
-              describe(""),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
-        {
-            this->values->config=config;
-            this->values->log=log;
-            this->options->config=config;
-            this->options->log=log;
+        inline const string & get_describe() override{return ""s;}
+        inline IAction* addOption(string&& name,string &&describe,int number,char short_cut)override{
+            this->options->addOption(name,describe,number,short_cut);
+            return this;
         }
 
-        Action(string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
-              describe(describe),af(af),short_cut(short_cut),options(new Options),values(new Values),config(config),log(log)
+        inline IAction* addValue(string&& value_name,string&& log,string&& value_type,string&& describe,string&& default_value)override{
+            this->values->addValue(value_name,log,value_type,describe,default_value);
+            return this;
+        }
+        AAction(action_fun& af,char short_cut,ParserConfig*config,Log*log):
+               af(af),options(new Options),values(new Values),config(config),log(log)
         {
+            this->short_cut=short_cut;
             this->values->config=config;
             this->values->log=log;
             this->options->config=config;
             this->options->log=log;
         }
-        ~Action(){
+        virtual ~AAction(){
             delete this->options;
             this->options=nullptr;
             delete this->values;
             this->values=nullptr;
         }
-        inline Action* addOption(string&& name,string &&describe,int number,char short_cut= COC_NULL_CHAR){
-            this->options->addOption(name,describe,number,short_cut);
-            return this;
-        }
+    };
 
-        inline Action* addValue(string&& value_name,string&& log,string&& value_type,string&& describe,string&& default_value=""){
-            this->values->addValue(value_name,log,value_type,describe,default_value);
-            return this;
+    using GlobalAction=AAction;
+
+    class Action:public AAction{
+        friend class Actions;
+        friend class Parser;
+        friend struct HelpFunc;
+    private:
+        string describe;
+    public:
+        inline const string & get_describe() override{
+            return this->describe;
+        }
+        Action(string& describe,action_fun& af,char short_cut,ParserConfig*config,Log*log):
+              AAction(af,short_cut,config,log)
+        {
+            this->describe=describe;
         }
     };
 
@@ -480,8 +538,8 @@ namespace coc {
     private:
         Log* log;
         ParserConfig *config;
-        Action* global;
-        map<string, Action*> actions;
+        GlobalAction* global;
+        map<string, IAction*> actions;
 
         int run(string&& action_name){
             if(action_name.size()==1){
@@ -534,7 +592,7 @@ namespace coc {
 
     public:
         Actions():
-               log(nullptr),config(nullptr),global(nullptr),actions(map<string, Action*>())
+               log(nullptr),config(nullptr),global(nullptr),actions(map<string, IAction*>())
         {}
         ~Actions(){
             for(auto&p:this->actions){
@@ -626,9 +684,9 @@ namespace coc {
             return this->log;
         }
 
-        inline Action* set_global_actions(action_fun af){
+        inline IAction* set_global_actions(action_fun af){
             if(this->actions->global==nullptr)
-                this->actions->global=new Action(af,COC_NULL_CHAR,this->config,this->log);
+                this->actions->global=new GlobalAction(af,COC_NULL_CHAR,this->config,this->log);
             return this->actions->global;
         }
 
@@ -702,7 +760,7 @@ namespace coc {
         }
     };
 
-    export struct HelpFunc{
+    export struct HelpFunc:public IHelpFunc{
         ParserConfig* config;
         Parser* parser;
 
@@ -721,7 +779,7 @@ namespace coc {
                         cout << '\t' << v->short_cut << ',';
                     else
                         cout << '\t' << "  ";
-                    cout << k << '\t' << v->describe << '\n';
+                    cout << k << '\t' << v->get_describe() << '\n';
                 }
             }
             if(!parser->actions->global->options->options.empty()) {
