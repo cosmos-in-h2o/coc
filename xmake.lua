@@ -1,8 +1,9 @@
 add_rules("mode.debug", "mode.release")
-
+--add_languages("c++20")
 target("coc")
     add_toolchains("clang")
     set_kind("binary")
+    --add_cxxflags("-stdlib=libc++")
     set_targetdir("target/")
-    add_files("src/example.cc")
+    add_files("src/*.cc")
     add_files("src/coc.ixx")
