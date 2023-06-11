@@ -178,10 +178,10 @@ Action具体表现为`命令 [Action] 其他`\
 保存所有的Action，Parser中有一个Actions的指针。
 #### **为parser创建action**
 Action存在于Actions中，Actions可以调用其成员函数`addAction(名字,介绍,触发action时调用的函数,缩写（可省略）)`来添加action,同时返回一个Action指针，然后就可以通过这个Action指针来执行其他操作。Parser对`addAction()`进行了包装，也就是说可以直接`parser.addAction(名字,介绍,触发action时调用的函数,缩写（可省略）)`
-### action_fun
+### ActionFun
 声明为
 ```cpp
-typedef void (*action_fun)(Options*,Arguments*,Values*,vector<string>&);
+typedef void (*ActionFun)(Options*,Arguments*,Values*,vector<string>&);
 ```
 示例中的test函数就是一个action_fun,函数传入指定的addAction中后，当触发该Action时会调用传入函数。\
 参数`Options*,Arguments*,Values*,vector<string>&`能够获取解析后的命令行指令
