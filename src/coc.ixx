@@ -1,9 +1,12 @@
-//module;
+module;
+#include <algorithm>
 #include <functional>
 #include <iostream>
+#include <list>
 #include <map>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 export module coc;
 
@@ -13,6 +16,8 @@ using namespace std;
 namespace coc {
     export class Parser;
     class Values;
+    class Option;
+
     export struct ParserConfig{
         bool intellisense_mode=true;//not supported now
         bool is_exit_if_not_found_option=true;
@@ -59,6 +64,104 @@ namespace coc {
 
     };
 
+    struct Option{
+        string name, intro;
+        int number;
+        char short_name;
+        Option(string&& name,string&&intro,int number,char short_name):
+                                                                             name(std::move(name)), intro(std::move(intro)),number(number), short_name(short_name)
+        {}
+    };
+
+    class Targets{
+        friend class Options;
+        friend class Action;
+        friend class Parser;
+    private:
+        struct Target{
+            Option* option;
+            vector<string_view>target_list;
+            explicit Target(Option*opt)
+                :option(opt)
+            {}
+        };
+        vector<Target*>targets_list;
+        inline void run(Option*opt){
+            this->targets_list.push_back(new Target(opt));
+        }
+        inline void run(string_view target){
+            this->targets_list.rbegin().operator*()->target_list.push_back(target);
+        }
+    public:
+        Targets()=default;
+        ~Targets(){
+            for(auto&p:this->targets_list){
+                delete p;
+                p=nullptr;
+            }
+        }
+        const char* at(int index,const string &_default){
+            if(index<this->targets_list[0]->target_list.size()){
+                return this->targets_list[0]->target_list[index].data();
+            }
+            return _default.data();
+        }
+        const char* at(const string&option_name,int index,const string&_default){
+            for(auto iter:this->targets_list){
+                if(iter->option->name==option_name){
+                    if(index<iter->target_list.size()){
+                        return iter->target_list[index].data();
+                    }
+                    break;
+                }
+            }
+            return _default.data();
+        }
+        const char* atOutOfRange(const string&option_name,int index,const string&_default){
+            auto iter = targets_list.begin();
+            for (; iter < this->targets_list.end(); ++iter) {
+                if(iter.operator*()->option->name==option_name){
+                    break;
+                }
+            }
+            for (;iter < this->targets_list.end(); ++iter) {
+                if(index-iter.operator*()->target_list.size()> -1){
+                    index-=static_cast<int>(iter.operator*()->target_list.size());
+                }
+                else{
+                    return iter.operator*()->target_list[index].data();
+                }
+            }
+            return _default.data();
+        }
+        const char* atAbsoluteIndex(int index,const string&_default){
+            for(auto iter:this->targets_list){
+                if(index-iter->target_list.size()> -1){
+                    index-=static_cast<int>(iter->target_list.size());
+                }
+                else{
+                    return iter->target_list[index].data();
+                }
+            }
+            return _default.data();
+        }
+        size_t size(){
+            size_t result=0;
+            for(auto iter:this->targets_list){
+                result+=static_cast<int>(iter->target_list.size());
+            }
+            return result;
+        }
+        size_t size(const string& option_name){
+            for(auto iter:this->targets_list){
+                if(iter->option->name==option_name){
+                    return iter->target_list.size();
+                }
+            }
+            return 0;
+        }
+    };
+
     class Options{
         friend struct Targets;
         friend class IAction;
@@ -67,35 +170,28 @@ namespace coc {
         friend class Parser;
         friend struct HelpFunc;
     private:
-        struct Option{
-            string name,describe;
-            int number;
-            char short_name;
-            Option(string& name,string& describe,int number,char short_name):
-                  name(name),describe(describe),number(number), short_name(short_name)
-            {}
-        };
+
         ParserConfig *config;
         Log *log;
         vector<Option*> options;//options list
         vector<Option*> options_u;//user options list
         //add an option to options list
-        inline void addOption(string& name,string& describe,int number,char short_name){
-            auto p=new Option(name,describe,number, short_name);
+        inline void addOption(string&& name,string&&intro,int number,char short_name){
+            auto p=new Option(std::move(name), std::move(intro),number, short_name);
             this->options.push_back(p);
         }
-        //add options_argv which user input.
-        bool run(vector<string>& options_argv){
+        //add opt_tar which user input.
+        bool run(list<string_view>& opt_tar){
             /*
             * in this step complete:
-            * Analysis of options_argv
+            * Analysis of opt_tar
             */
 
             /*
              * after that
              * call none
              */
-            for(auto &str:options_argv) {
+            for(auto str: opt_tar) {
                 if (str[1] == '-') {
                     //if the 2nd char is -
                     for (auto iter_opt: this->options) {
@@ -105,11 +201,11 @@ namespace coc {
                             return true;
                         }
                     }
-                    log->unidentifiedOption(str);
+                    log->unidentifiedOption(str.data());
                     return false;
                 } else {
                     bool error = true;
-                    string options_str=str.substr(1,str.size()-1);
+                    string_view options_str=str.substr(1,str.size()-1);
                     for (auto iter_str: options_str) {
                         for (auto iter_opt: this->options) {
                             if (iter_opt->short_name != COC_NULL_CHAR && iter_str == iter_opt->short_name) {
@@ -135,7 +231,7 @@ namespace coc {
         }
     public:
         Options():
-               config(nullptr),log(nullptr)
+                    config(nullptr),log(nullptr)
         {}
 
         ~Options(){
@@ -154,18 +250,14 @@ namespace coc {
             return this->at(index);
         }
         inline bool getOption(const string& option){
-            for (auto iter: this->options_u) {
-                if (iter->name == option)
-                    return true;
-            }
-            return false;
+            return std::ranges::any_of(options_u, [&](auto iter) {
+                return iter->name == option;
+            });
         }
         inline bool getOption(char short_name){
-            for (auto iter: this->options_u) {
-                if (iter->short_name == short_name)
-                    return true;
-            }
-            return false;
+            return std::ranges::any_of(options_u, [&](auto iter) {
+                return iter->short_name == short_name;
+            });
         }
         inline bool isOnlyOpt(const string& option){
             if(this->options_u.size()==1) {
@@ -199,9 +291,9 @@ namespace coc {
 
     private:
         struct Value{
-            string value_name,value_log,value_type,describe,default_value;
-            Value(string& value_name,string& value_log,string& value_type,string& describe,string& default_value):
-                 value_name(value_name),value_log(value_log),value_type(value_type),describe(describe),default_value(default_value)
+            string value_name,value_log,value_type, intro,default_value;
+            Value(string&&name,string&& val_log,string&& type,string&&intro,string&& def_val):
+                                                                                                      value_name(std::move(name)),value_log(std::move(val_log)),value_type(std::move(type)), intro(std::move(intro)),default_value(std::move(def_val))
             {}
         };
         vector<Value*> values;
@@ -210,8 +302,8 @@ namespace coc {
         Log* log;
 
         //add a value to list
-        inline void addValue(string& value_name,string& value_log,string& value_type,string& describe,string& default_value){
-            this->values.push_back(new Values::Value(value_name,value_log,value_type,describe,default_value));
+        inline void addValue(string&& name,string&& val_log,string&& type,string&& intro,string&& def_val){
+            this->values.push_back(new Values::Value(std::move(name),std::move(val_log),std::move(type),std::move(intro),std::move(def_val)));
         }
         //put run and get value that user input
         bool run(){
@@ -274,33 +366,6 @@ namespace coc {
         }
     };
 
-    class Targets{
-        friend class Action;
-        friend class Parser;
-    private:
-        struct Target{
-            vector<string> option_name;
-            vector<string>target_list;
-        };
-        vector<Target*>targets_list;
-        int run(vector<vector<string>&>& targets,string){
-
-        }
-    public:
-        const string& at(int index,const string &_default){
-            return _default;
-        }
-        const string& at(const string&option_name,int index,const string&_default){
-            return _default;
-        }
-        const string& atOutRange(const string&option_name,int index,const string&_default){
-            return _default;
-        }
-        int size(const string& option_name){
-
-        }
-    };
-
     class Arguments{
         friend class Parser;
         friend struct HelpFunc;
@@ -309,7 +374,7 @@ namespace coc {
             string argument_type,describe;
 
             Argument(string& argument_type,string& describe):
-                    argument_type(argument_type),describe(describe)
+                                                                argument_type(argument_type),describe(describe)
             {}
         };
 
@@ -322,7 +387,7 @@ namespace coc {
         inline void addArgument(string& argument_name,string& argument_type,string& describe){
             this->arguments[argument_name]=new Argument(argument_type,describe);
         }
-        bool run(const string& argv){
+        bool run(string_view argv){
             /*
             * in this step complete:
             * Analysis of argument
@@ -361,7 +426,7 @@ namespace coc {
         }
     public:
         Arguments():
-                 config(nullptr),log(nullptr)
+                      config(nullptr),log(nullptr)
         {}
 
         ~Arguments(){
@@ -410,21 +475,28 @@ namespace coc {
     };
 
     export struct Getter{
+    private:
         Options* opt;
         Values* val;
         Arguments* arg;
-        vector<string>* tar;
-        bool is_empty=false;
+
+    public:
         explicit Getter(Values* values):
-            is_empty(true),opt(nullptr),val(values),arg(nullptr),tar(nullptr)
+                                          is_empty(true),opt(nullptr),val(values),arg(nullptr)
         {}
-        Getter(Options* options,Values* values,Arguments* arguments,vector<string>* targets):
-            opt(options),val(values),arg(arguments),tar(targets)
+        Getter(Options* options,Values* values,Arguments* arguments):
+                                                                         opt(options),val(values),arg(arguments)
         {}
+        bool is_empty=false;
+        inline Options* get_opt(){return this->opt;}
+        inline Values* get_val(){return this->val;}
+        inline Arguments* get_arg(){return this->arg;}
     };
 
     //Action function pointer
-    using action_fun=function<void(Getter)>;
+    using ActionFun =function<void(Getter)>;
+
+    ActionFun coc_empty=[](Getter){return;};
 
     //Action interface
     export struct IAction{
@@ -432,22 +504,22 @@ namespace coc {
         friend struct HelpFunc;
     protected:
         virtual int run()=0;
-        virtual int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments)=0;
+        virtual int run(list<string_view>&opt_tar, Arguments *arguments)=0;
         char short_cut{};
         Options* options;
         Values* values;
     public:
         virtual const string& get_describe()=0;
-        virtual IAction* addOption(string&&m_name,string &&m_describe,int m_number,char m_short_name =COC_NULL_CHAR) {
-            this->options->addOption(m_name,m_describe,m_number, m_short_name);
+        virtual IAction* addOption(string&&name,string &&intro,int num,char s_name =COC_NULL_CHAR) {
+            this->options->addOption(std::move(name), std::move(intro),num, s_name);
             return this;
         }
-        virtual IAction* addValue(string&&m_value_name,string&&m_log,string&& m_value_type,string&&m_describe,string&&m_default_value ="") {
-            this->values->addValue(m_value_name,m_log,m_value_type,m_describe,m_default_value);
+        virtual IAction* addValue(string&&name,string&&val_log,string&&type,string&&intro,string&&def_val ="") {
+            this->values->addValue(std::move(name),std::move(val_log), std::move(type),std::move(intro),std::move(def_val));
             return this;
         }
         IAction(Options*options,Values*values,char short_cut,ParserConfig*config,Log*log):
-                options(options),values(values),short_cut(short_cut)
+                                                                                                    options(options),values(values),short_cut(short_cut)
         {
             this->options->config=config;
             this->options->log=log;
@@ -457,13 +529,13 @@ namespace coc {
         virtual ~IAction()= default;
     };
 
-    struct IHelpFunc{
+    export struct IHelpFunc{
         ParserConfig* config;
         Parser* parser;
         virtual void run(Getter g)=0;
         virtual ~IHelpFunc()= default;
         IHelpFunc(ParserConfig* config,Parser* parser):
-                config(config),parser(parser)
+                                                          config(config),parser(parser)
         {}
     };
 
@@ -476,10 +548,10 @@ namespace coc {
             this->hf->run(Getter(this->values));
             return 0;
         }
-        int run(vector<std::string> &options_argv, vector<std::string> &target, coc::Arguments *arguments) override{
-            if(!this->options->run(options_argv)) return -1;
+        int run(list<string_view> &opt_tar, coc::Arguments *arguments) override{
+            if(!this->options->run(opt_tar)) return -1;
             if(!this->values->run()) return -1;
-            this->hf->run(Getter(this->options,this->values,arguments,&target));
+            this->hf->run(Getter(this->options,this->values,arguments));
             return 0;
         }
 
@@ -489,7 +561,7 @@ namespace coc {
             hf=nullptr;
         }
         HelpAction(string& describe,IHelpFunc*hf,char short_cut,ParserConfig*config,Log*log):
-                IAction(new Options(),new Values(),short_cut,config,log)
+                                                                                                      IAction(new Options(),new Values(),short_cut,config,log)
         {
             this->describe=describe;
             this->hf=hf;
@@ -505,7 +577,7 @@ namespace coc {
         friend class Parser;
         friend struct HelpFunc;
     protected:
-        action_fun af;
+        ActionFun af;
 
     private:
         inline int run() override {
@@ -513,7 +585,7 @@ namespace coc {
             this->af(Getter(this->values));
             return 0;
         }
-        inline int run(vector<string>& options_argv,vector<string>&target, Arguments *arguments) override{
+        inline int run(list<string_view>&opt_tar, Arguments *arguments) override{
             /*
             * in this step complete:
             * do nothing,only call function
@@ -525,9 +597,9 @@ namespace coc {
              * call values' run()
              */
 
-            if(!this->options->run(options_argv)) return -1;
+            if(!this->options->run(opt_tar)) return -1;
             if(!this->values->run()) return -1;
-            this->af(Getter(this->options,this->values,arguments,&target));
+            this->af(Getter(this->options,this->values,arguments));
             return 0;
         }
     public:
@@ -539,8 +611,8 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        AAction(action_fun af,char short_cut,ParserConfig*config,Log*log):
-                IAction(new Options(),new Values(),short_cut,config,log)
+        AAction(ActionFun af,char short_cut,ParserConfig*config,Log*log):
+                                                                                IAction(new Options(),new Values(),short_cut,config,log)
         {
             this->af=af;
         }
@@ -558,8 +630,8 @@ namespace coc {
         inline const string & get_describe() override{
             return this->describe;
         }
-        Action(string& describe,action_fun af,char short_cut,ParserConfig*config,Log*log):
-              AAction(af,short_cut,config,log)
+        Action(string& describe, ActionFun af,char short_cut,ParserConfig*config,Log*log):
+                                                                                                 AAction(af,short_cut,config,log)
         {
             this->describe=describe;
         }
@@ -573,8 +645,20 @@ namespace coc {
         ParserConfig *config;
         GlobalAction* global;
         map<string, IAction*> actions;
-
-        int run(string&& action_name){
+        bool isHavaAction(const string& name){
+            if(name.size()==1){
+                bool result=false;
+                for(auto&[k,v]:this->actions){
+                    if(v->short_cut!=COC_NULL_CHAR&&v->short_cut==name[0])
+                        result=true;
+                }
+                return result;
+            }
+            if (this->actions.find(name) == this->actions.end())
+                return false;
+            return true;
+        }
+        int run(const string& action_name){
             if(action_name.size()==1){
                 for(auto &[k,v]: this->actions){
                     //if it has shortcut and the action name equal to shortcut
@@ -593,8 +677,8 @@ namespace coc {
             p->second->run();
             return 0;
         }
-        //if error,the function will return false
-        int run(string&& action_name,vector<string>& options,vector<string>&target,Arguments *arguments) {
+        //if error,the function will return -1
+        int run(const string& action_name,list<string_view>& opt_tar,Arguments *arguments) {
             /*
             * in this step complete:
             * find the designated action
@@ -610,7 +694,7 @@ namespace coc {
                 for(auto &[k,v]: this->actions){
                     //if it has shortcut and the action name equal to shortcut
                     if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
-                        return v->run(options, target,arguments);
+                        return v->run(opt_tar, arguments);
                     }
                 }
             }
@@ -620,12 +704,12 @@ namespace coc {
                 log->notFoundAction(action_name);
                 return -1;
             }
-            return p->second->run(options, target,arguments);
+            return p->second->run(opt_tar, arguments);
         }
 
     public:
         Actions():
-               log(nullptr),config(nullptr),global(nullptr),actions(map<string, IAction*>())
+                    log(nullptr),config(nullptr),global(nullptr),actions(map<string, IAction*>())
         {}
         ~Actions(){
             for(auto&p:this->actions){
@@ -637,13 +721,13 @@ namespace coc {
         }
 
         //add an action
-        inline IAction* addAction(string& action_name,string& describe,action_fun& af,char short_cut= COC_NULL_CHAR){
+        inline IAction* addAction(string& action_name,string& describe, ActionFun & af,char short_cut= COC_NULL_CHAR){
             auto action =new Action(describe,af,short_cut,this->config,this->log);
             this->actions[action_name]=action;
             return action;
         }
 
-        //add an help action
+        //add a help action
         inline IAction* addHelpAction(string& action_name,string& describe,IHelpFunc* hf,char short_cut= COC_NULL_CHAR){
             auto* action =new HelpAction(describe,hf,short_cut,this->config,this->log);
             this->actions[action_name]=action;
@@ -670,7 +754,7 @@ namespace coc {
         }
     public:
         Parser(ParserConfig *config,Log* log):
-               config(config),log(log), hf(nullptr)
+                                                 config(config),log(log), hf(nullptr)
         {
             this->arguments=new Arguments;
             this->actions=new Actions;
@@ -707,7 +791,7 @@ namespace coc {
             this->config= m_config;
         }
         //only package with a layer
-        inline IAction* addAction(string&& action_name,string&& describe,action_fun af,char short_cut= COC_NULL_CHAR){
+        inline IAction* addAction(string&& action_name,string&& describe,ActionFun af,char short_cut= COC_NULL_CHAR){
             return this->actions->addAction(action_name,describe,af,short_cut);
         }
         //only package with a layer
@@ -728,9 +812,9 @@ namespace coc {
             return this->log;
         }
 
-        inline IAction* set_global_actions(action_fun af){
+        inline IAction* set_global_actions(ActionFun af){
             if(this->actions->global==nullptr)
-                this->actions->global=new GlobalAction(af,COC_NULL_CHAR,this->config,this->log);
+                this->actions->global=new GlobalAction(std::move(af),COC_NULL_CHAR,this->config,this->log);
             return this->actions->global;
         }
 
@@ -746,7 +830,7 @@ namespace coc {
         int run(int argc,char** argv) {
             /*
              * in this step complete:
-             * Analysis of argv except options and arguments
+             * Analysis of argv except opt_tar and arguments
              * determine which is option
              * determine which is argument
              */
@@ -756,22 +840,26 @@ namespace coc {
              * call actions' run() or global_action's run()
              * call arguments' run()
              */
-
+#define COC_IS_GLOBAL
+#define COC_IS_COMMON
             //optimize
             if(argc==1&&this->actions->global!=nullptr){
+                COC_IS_GLOBAL
                 return this->actions->global->run();
             }
-            if(argc==2&&argv[1][0]!='-'){
+            bool is_common=this->actions->isHavaAction(argv[1]);
+            if(argc==2&&is_common){
+                COC_IS_COMMON
                 return this->actions->run(argv[1]);
             }
 
             //analyse
-            vector<string> all_argv;//all cmd argv
-            vector<string> options;
-            vector<string> target;//argv except options and arguments
+            list<string_view> all_argv;//all cmd argv
+            list<string_view> opt_tar;
+
             int i=1;
             //if it isn't the global action, then read from index of 2
-            if(argv[1][0]!='-') i=2;
+            if(is_common) i=2;
             for (; i < argc; ++i) {
                 all_argv.emplace_back(argv[i]);
             }
@@ -781,25 +869,22 @@ namespace coc {
                         if(!arguments->run(p))
                             return -1;
                     }
-                    else{
-                        options.push_back(p);
-                    }
                 }
                 else {
-                    target.push_back(p);
+                    opt_tar.push_back(p);
                 }
             }
             //execute
-            if(argv[1][0]=='-'){
+            if(!is_common){
                 if(this->actions->global==nullptr) {
                     this->log->globalActionNotDoesNotExist();
                     return -1;
                 }
                 else {
-                    return this->actions->global->run(options, target, this->arguments);
+                    return this->actions->global->run(opt_tar, this->arguments);
                 }
             }
-            return this->actions->run(argv[1], options, target, this->arguments);
+            return this->actions->run(argv[1],opt_tar,this->arguments);
 
         }
     };
@@ -845,7 +930,7 @@ namespace coc {
         }
 
         virtual inline void printGlobalValues(){
-           HelpFunc::printValues(this->parser->actions->global->values);
+            HelpFunc::printValues(this->parser->actions->global->values);
         }
 
         virtual inline void printArguments(){
@@ -865,7 +950,7 @@ namespace coc {
                         cout << "\t-" << p->short_name << ',';
                     else
                         cout << '\t' << "   ";
-                    cout << "--" << p->name << '\t' << p->describe << '\n';
+                    cout << "--" << p->name << '\t' << p->intro << '\n';
                 }
             }
         }
@@ -874,7 +959,7 @@ namespace coc {
             if(!values->values.empty()){
                 cout<<"Values(Global):\n";
                 for (auto p: values->values) {
-                    cout<<'\t' <<p->value_name<<"\tType:"<<p->value_type<<'\t'<< p->describe;
+                    cout<<'\t' <<p->value_name<<"\tType:"<<p->value_type<<'\t'<< p->intro;
                     if(!p->default_value.empty()){
                         cout<<"\tDefault="<<p->default_value;
                     }
@@ -889,7 +974,7 @@ namespace coc {
         }
 
         HelpFunc(ParserConfig*config,Parser*parser):
-                IHelpFunc(config,parser)
-        {};
+                                                         IHelpFunc(config,parser)
+                                                                 {};
     };
 }//namespace coc
