@@ -24,7 +24,7 @@ void test(coc::Options* o,coc::Arguments* a,coc::Values* v,vector<string>& s){
 int main(int argc,char** argv){
     Parser p;
     p.getActions()->
-    addAction("test","this is test's describe.",test);
+    addAction("test","this is test's intro.",test);
     return p.run(argc,argv);
 }
 ```
@@ -51,7 +51,7 @@ void test(coc::Options* o,coc::Arguments* a,coc::Values* v,vector<string>& s){
 
 int main(int argc,char** argv){
     Parser p;
-    p.getActions()->addAction("test","this is test's describe.",test)->
+    p.getActions()->addAction("test","this is test's intro.",test)->
     addOption("dot","put a dot in the end.",7,'d');
     return p.run(argc,argv);
 }
