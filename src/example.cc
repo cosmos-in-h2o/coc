@@ -1,8 +1,8 @@
-
 //example.cc
 #include <iostream>
 #include <functional>
 #include <vector>
+//#include "coc.hpp"
 import coc;
 using namespace std;
 using namespace coc;
@@ -13,36 +13,31 @@ void test(Getter g){
     }
     cout<<"-----------------------------------\n";
     cout<<"options test:\n";
-    for(auto iter:g.opt->get_list()){
+    for(auto iter:g.get_opt()->get_list()){
         cout<<iter->name<<"\n";
     }
     cout<<"-----------------------------------\n";
     cout<<"arguments test\n";
-    cout<<"arguments bool test:"<<g.arg->getBool("BOOL",true)<<"\n";
-    cout<<"arguments int test:"<<g.arg->getInt("INT",-1)<<"\n";
-    cout<<"arguments char test:"<<g.arg->getChar("CHAR",'t')<<"\n";
-    cout<<"arguments string test:"<<g.arg->getString("STRING","string")<<"\n";
-    cout<<"arguments float test:"<<g.arg->getFloat("FLOAT",-1.1f)<<"\n";
+    cout<<"arguments bool test:"<<g.get_arg()->getBool("BOOL",true)<<"\n";
+    cout<<"arguments int test:"<<g.get_arg()->getInt("INT",-1)<<"\n";
+    cout<<"arguments string test:"<<g.get_arg()->getString("STRING","string")<<"\n";
+    cout<<"arguments char test:"<<g.get_arg()->getChar("CHAR",'t')<<"\n";
+    cout<<"arguments float test:"<<g.get_arg()->getFloat("FLOAT",-1.1f)<<"\n";
 
     cout<<"-----------------------------------\n";
     cout<<"value test:\n";
-    cout<<"default value:"<<g.val->getString("value1")<<"\n";
-    cout<<"value:"<<g.val->getString("value2")<<"\n";
 
     cout<<"-----------------------------------\n";
     cout<<"argv test:\n";
-    for(auto &iter:*(g.tar)){
-        cout<<iter<<'\n';
-    }
 }
 void global_action(Getter g){
 
 }
 int main(int argc,char**argv) {
-    ParserConfig *config = new ParserConfig;
+    auto *config = new ParserConfig;
     Log *log = new Log;
     Parser parser(config, log);
-    HelpFunc*hf=new HelpFunc(config,&parser);
+    IHelpFunc *hf=new HelpFunc(config,&parser);
 
     parser.addAction("test", "this is a test",test,'t')
             ->addOption("foption", "this is a option", 22)
