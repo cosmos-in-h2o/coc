@@ -842,15 +842,24 @@ namespace coc {
              */
 #define COC_IS_GLOBAL
 #define COC_IS_COMMON
+            bool is_common;
             //optimize
-            if(argc==1&&this->actions->global!=nullptr){
-                COC_IS_GLOBAL
-                return this->actions->global->run();
+            if(this->actions->global!=nullptr){
+                is_common=this->actions->isHavaAction(argv[1]);
+                if(argc==1&&!is_common) {
+                    COC_IS_GLOBAL
+                    return this->actions->global->run();
+                }
+                else if(argc==2&&is_common){
+                   COC_IS_COMMON
+                   return this->actions->run(argv[1]);
+                }
             }
-            bool is_common=this->actions->isHavaAction(argv[1]);
-            if(argc==2&&is_common){
+            else{
                 COC_IS_COMMON
-                return this->actions->run(argv[1]);
+                if(argc==2)
+                    return this->actions->run(argv[1]);
+                is_common=true;
             }
 
             //analyse
