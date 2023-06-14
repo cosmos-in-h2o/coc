@@ -91,11 +91,12 @@ namespace coc {
         inline void run(Option*opt){
             this->targets_list.push_back(new Target(opt));
         }
-        inline void run(string_view target){
+        void run(string_view target){
+            if(this->targets_list.empty()) {
+                this->first->target_list.push_back(target);
+                return;
+            }
             this->targets_list.rbegin().operator*()->target_list.push_back(target);
-        }
-        inline void run_f(string_view target){
-            this->first->target_list.push_back(target);
         }
     public:
         Targets(){
@@ -103,6 +104,7 @@ namespace coc {
         }
         ~Targets(){
             delete this->first;
+            this->first= nullptr;
             for(auto&p:this->targets_list){
                 delete p;
                 p=nullptr;
@@ -196,12 +198,13 @@ namespace coc {
         friend class HelpAction;
         friend class Parser;
         friend struct HelpFunc;
+        friend struct Getter;
     private:
-
         ParserConfig *config;
         Log *log;
         vector<Option*> options;//options list
         vector<Option*> options_u;//user options list
+        Targets* targets;
         //add an option to options list
         inline void addOption(string&& name,string&&intro,int number,char short_name){
             auto p=new Option(std::move(name), std::move(intro),number, short_name);
@@ -219,49 +222,58 @@ namespace coc {
              * call none
              */
             for(auto str: opt_tar) {
-                if (str[1] == '-') {
-                    //if the 2nd char is -
-                    for (auto iter_opt: this->options) {
-                        //find right option
-                        if (iter_opt->name == str.substr(2, str.size() - 2)) {
-                            this->options_u.push_back(iter_opt);//add option ptr to options_u
+                if (str[0] == '-') {
+                    if (str[1] == '-') {
+                        //if the 2nd char is -
+                        for (auto iter_opt: this->options) {
+                            //find right option
+                            if (iter_opt->name == str.substr(2, str.size() - 2)) {
+                                this->options_u.push_back(iter_opt);//add option ptr to options_u
+                                this->targets->run(iter_opt);
+                                return true;
+                            }
+                        }
+                        log->unidentifiedOption(str.data());
+                        return false;
+                    }
+                    else {
+                        bool error = true;
+                        string_view options_str = str.substr(1, str.size() - 1);
+                        for (auto iter_str: options_str) {
+                            for (auto iter_opt: this->options) {
+                                if (iter_opt->short_name != COC_NULL_CHAR && iter_str == iter_opt->short_name) {
+                                    this->options_u.push_back(iter_opt);//add option ptr to options_u
+                                    this->targets->run(iter_opt);
+                                    error = false;
+                                }
+                            }
+                            if (error) {
+                                log->unidentifiedOption(iter_str);
+                                if (config->is_exit_if_not_found_option) {
+                                    return false;
+                                }
+                            }
+                        }
+                        if (!config->is_exit_if_not_found_option) {
                             return true;
                         }
+                        return !error;
                     }
-                    log->unidentifiedOption(str.data());
-                    return false;
-                } else {
-                    bool error = true;
-                    string_view options_str=str.substr(1,str.size()-1);
-                    for (auto iter_str: options_str) {
-                        for (auto iter_opt: this->options) {
-                            if (iter_opt->short_name != COC_NULL_CHAR && iter_str == iter_opt->short_name) {
-                                this->options_u.push_back(iter_opt);//add option ptr to options_u
-                                error = false;
-                            }
-                        }
-                        if (error) {
-                            log->unidentifiedOption(iter_str);
-                            if(config->is_exit_if_not_found_option)
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    if(!config->is_exit_if_not_found_option){
-                        return true;
-                    }
-                    return !error;
+                }
+                else{
+                    this->targets->run(str);
                 }
             }
             return true;
         }
     public:
         Options():
-                    config(nullptr),log(nullptr)
+                    config(nullptr),log(nullptr),targets(new Targets())
         {}
 
         ~Options(){
+            delete this->targets;
+            this->targets=nullptr;
             for(auto& p:this->options){
                 delete p;
                 p=nullptr;
@@ -400,8 +412,8 @@ namespace coc {
         struct Argument{
             string argument_type,describe;
 
-            Argument(string& argument_type,string& describe):
-                                                                argument_type(argument_type),describe(describe)
+            Argument(string&& argument_type,string&& describe):
+                    argument_type(std::move(argument_type)),describe(std::move(describe))
             {}
         };
 
@@ -411,8 +423,8 @@ namespace coc {
         map<string,string> arguments_u;
 
         //add an argument to list
-        inline void addArgument(string& argument_name,string& argument_type,string& describe){
-            this->arguments[argument_name]=new Argument(argument_type,describe);
+        inline void addArgument(string&& argument_name,string&& argument_type,string&& describe){
+            this->arguments[std::move(argument_name)]=new Argument(std::move(argument_type),std::move(describe));
         }
         bool run(string_view argv){
             /*
@@ -518,12 +530,13 @@ namespace coc {
         inline Options* get_opt(){return this->opt;}
         inline Values* get_val(){return this->val;}
         inline Arguments* get_arg(){return this->arg;}
+        inline Targets* get_tar(){return this->opt->targets;}
     };
 
     //Action function pointer
     using ActionFun =function<void(Getter)>;
 
-    ActionFun coc_empty=[](Getter){return;};
+    export ActionFun coc_empty=[](Getter){return;};
 
     //Action interface
     export struct IAction{
@@ -537,11 +550,11 @@ namespace coc {
         Values* values;
     public:
         virtual const string& get_describe()=0;
-        virtual IAction* addOption(string&&name,string &&intro,int num,char s_name =COC_NULL_CHAR) {
+        virtual IAction* addOption(string name,string intro,int num,char s_name =COC_NULL_CHAR) {
             this->options->addOption(std::move(name), std::move(intro),num, s_name);
             return this;
         }
-        virtual IAction* addValue(string&&name,string&&val_log,string&&type,string&&intro,string&&def_val ="") {
+        virtual IAction* addValue(string name,string val_log,string type,string intro,string def_val ="") {
             this->values->addValue(std::move(name),std::move(val_log), std::move(type),std::move(intro),std::move(def_val));
             return this;
         }
@@ -587,10 +600,10 @@ namespace coc {
             delete this->hf;
             hf=nullptr;
         }
-        HelpAction(string& describe,IHelpFunc*hf,char short_cut,ParserConfig*config,Log*log):
+        HelpAction(string&& describe,IHelpFunc*hf,char short_cut,ParserConfig*config,Log*log):
                                                                                                       IAction(new Options(),new Values(),short_cut,config,log)
         {
-            this->describe=describe;
+            this->describe=std::move(describe);
             this->hf=hf;
         }
 
@@ -657,10 +670,10 @@ namespace coc {
         inline const string & get_describe() override{
             return this->describe;
         }
-        Action(string& describe, ActionFun af,char short_cut,ParserConfig*config,Log*log):
+        Action(string&& describe, ActionFun af,char short_cut,ParserConfig*config,Log*log):
                                                                                                  AAction(af,short_cut,config,log)
         {
-            this->describe=describe;
+            this->describe=std::move(describe);
         }
     };
 
@@ -748,15 +761,15 @@ namespace coc {
         }
 
         //add an action
-        inline IAction* addAction(string& action_name,string& describe, ActionFun & af,char short_cut= COC_NULL_CHAR){
-            auto action =new Action(describe,af,short_cut,this->config,this->log);
+        inline IAction* addAction(string&& action_name,string&& describe, ActionFun & af,char short_cut= COC_NULL_CHAR){
+            auto action =new Action(std::move(describe),af,short_cut,this->config,this->log);
             this->actions[action_name]=action;
             return action;
         }
 
         //add a help action
-        inline IAction* addHelpAction(string& action_name,string& describe,IHelpFunc* hf,char short_cut= COC_NULL_CHAR){
-            auto* action =new HelpAction(describe,hf,short_cut,this->config,this->log);
+        inline IAction* addHelpAction(string&& action_name,string&& describe,IHelpFunc* hf,char short_cut= COC_NULL_CHAR){
+            auto* action =new HelpAction(std::move(describe),hf,short_cut,this->config,this->log);
             this->actions[action_name]=action;
             return action;
         }
@@ -818,16 +831,16 @@ namespace coc {
             this->config= m_config;
         }
         //only package with a layer
-        inline IAction* addAction(string&& action_name,string&& describe,ActionFun af,char short_cut= COC_NULL_CHAR){
-            return this->actions->addAction(action_name,describe,af,short_cut);
+        inline IAction* addAction(string action_name,string describe,ActionFun& af,char short_cut= COC_NULL_CHAR){
+            return this->actions->addAction(std::move(action_name),std::move(describe),af,short_cut);
         }
         //only package with a layer
-        inline IAction* addHelpAction(string&& action_name,string&& describe,IHelpFunc*m_hf,char short_cut= COC_NULL_CHAR){
-            return this->actions->addHelpAction(action_name,describe, m_hf,short_cut);
+        inline IAction* addHelpAction(string action_name,string describe,IHelpFunc*m_hf,char short_cut= COC_NULL_CHAR){
+            return this->actions->addHelpAction(std::move(action_name),std::move(describe), m_hf,short_cut);
         }
         //only package with a layer
-        inline Parser* addArgument(string&& argument_name,string&& argument_type,string&& describe){
-            this->arguments->addArgument(argument_name,argument_type,describe);
+        inline Parser* addArgument(string argument_name,string argument_type,string describe){
+            this->arguments->addArgument(std::move(argument_name),std::move(argument_type),std::move(describe));
             return this;
         }
         //get and set function
