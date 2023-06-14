@@ -79,12 +79,14 @@ namespace coc {
         friend class Parser;
     private:
         struct Target{
-            Option* option;
+            Option* option{};
             vector<string_view>target_list;
             explicit Target(Option*opt)
                 :option(opt)
             {}
+            Target() = default;
         };
+        Target *first;
         vector<Target*>targets_list;
         inline void run(Option*opt){
             this->targets_list.push_back(new Target(opt));
@@ -92,20 +94,45 @@ namespace coc {
         inline void run(string_view target){
             this->targets_list.rbegin().operator*()->target_list.push_back(target);
         }
+        inline void run_f(string_view target){
+            this->first->target_list.push_back(target);
+        }
     public:
-        Targets()=default;
+        Targets(){
+            this->first=new Target();
+        }
         ~Targets(){
+            delete this->first;
             for(auto&p:this->targets_list){
                 delete p;
                 p=nullptr;
             }
         }
         const char* at(int index,const string &_default){
-            if(index<this->targets_list[0]->target_list.size()){
-                return this->targets_list[0]->target_list[index].data();
+            if(index<this->first->target_list.size()){
+                return this->first->target_list[index].data();
             }
             return _default.data();
         }
+
+        const char* atAbsoluteIndex(int index,const string&_default){
+            if(index-this->first->target_list.size()> -1){
+                index-=static_cast<int>(this->first->target_list.size());
+            }
+            else{
+                return this->first->target_list[index].data();
+            }
+            for(auto iter:this->targets_list){
+                if(index-iter->target_list.size()> -1){
+                    index-=static_cast<int>(iter->target_list.size());
+                }
+                else{
+                    return iter->target_list[index].data();
+                }
+            }
+            return _default.data();
+        }
+
         const char* at(const string&option_name,int index,const string&_default){
             for(auto iter:this->targets_list){
                 if(iter->option->name==option_name){
@@ -117,8 +144,15 @@ namespace coc {
             }
             return _default.data();
         }
+
         const char* atOutOfRange(const string&option_name,int index,const string&_default){
-            auto iter = targets_list.begin();
+            if(index-this->first->target_list.size()> -1){
+                index-=static_cast<int>(this->first->target_list.size());
+            }
+            else{
+                return this->first->target_list[index].data();
+            }
+            auto iter = this->targets_list.begin();
             for (; iter < this->targets_list.end(); ++iter) {
                 if(iter.operator*()->option->name==option_name){
                     break;
@@ -134,23 +168,16 @@ namespace coc {
             }
             return _default.data();
         }
-        const char* atAbsoluteIndex(int index,const string&_default){
-            for(auto iter:this->targets_list){
-                if(index-iter->target_list.size()> -1){
-                    index-=static_cast<int>(iter->target_list.size());
-                }
-                else{
-                    return iter->target_list[index].data();
-                }
-            }
-            return _default.data();
-        }
+
         size_t size(){
-            size_t result=0;
+            size_t result=this->first->target_list.size();
             for(auto iter:this->targets_list){
-                result+=static_cast<int>(iter->target_list.size());
+                result+=iter->target_list.size();
             }
             return result;
+        }
+        inline size_t size_f(){
+            return this->first->target_list.size();
         }
         size_t size(const string& option_name){
             for(auto iter:this->targets_list){
