@@ -85,7 +85,7 @@ void test(Options*o,Arguments*a,Values*v,vector<string>&argv){
 
 int main(int argc,char**argv) {
     ParserConfig *config = new ParserConfig;
-    Log *log = new Log;
+    ParserLog *log = new ParserLog;
     Parser parser(config, log);
     parser.addAction("test", "this is a test", test)
             ->addOption("foption", "this is a option", 22, 'f')
@@ -115,7 +115,7 @@ import coc;
 
 int main(int argc,char**argv){
     coc::ParserConfig config=new coc::ParserConfig;
-    coc::Log=new coc::Log
+    coc::ParserLog=new coc::ParserLog
     coc::Parser parser=coc::Parser(config,log);
     //如果没有特殊说明这里就是以下要写代码的位置
 
@@ -134,7 +134,7 @@ int main(int argc,char**argv){
 |argument_need_extern|bool|是否能输入未声明的全局参数|true|
 |logo_and_version|std::string|程序版本和logo等|"coc v1.0.0"|
 |argument_mark|char|全局参数识别符|'D'|
-### Log
+### ParserLog
 这是一个没有成员属性的函数的集合，可以通过继承的方式对其中一些log进行修改
 |函数名|参数|执行条件|效果|
 |----|----|----|----|
@@ -147,7 +147,7 @@ valueLog|const string &value_log,const string& default_value|当需要获取valu
 下面是一个修改示例：
 ```cpp
 //外部
-struct MyLog:public coc::Log{
+struct MyLog:public coc::ParserLog{
     inline void notFoundAction(const string& action) override{
             printf("Error:There isn't action:%s.\n"action.c_str());
     }

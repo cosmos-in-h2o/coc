@@ -29,7 +29,7 @@ void test(Getter g){
 
 int main(int argc,char**argv) {
     auto *config = new ParserConfig;
-    Log *log = new Log;
+    auto *log = new ParserLog;
     Parser parser(config, log);
     IHelpFunc *hf=new HelpFunc(config,&parser);
     parser.addAction("test1","this is a test",test)
