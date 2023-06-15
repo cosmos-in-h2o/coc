@@ -73,7 +73,7 @@ namespace coc {
         char argument_mark='D';//-[argument_mark] mark as argument
     };
 
-    export struct Log{
+    export struct ParserLog {
         virtual inline void unidentifiedArgument(const string& argument){
             printf("Error:Unidentified argument:%s.\n",argument.c_str());
         }
@@ -237,7 +237,7 @@ namespace coc {
         friend struct Getter;
     private:
         ParserConfig *config;
-        Log *log;
+        ParserLog *log;
         vector<Option*> options;//options list
         vector<Option*> options_u;//user options list
         Targets* targets;
@@ -368,7 +368,7 @@ namespace coc {
         vector<Value*> values;
         map<string,string> values_u;
         ParserConfig* config;
-        Log* log;
+        ParserLog * log;
 
         //add a value to list
         inline void addValue(string&& name,string&& val_log,string&& type,string&& intro,string&& def_val){
@@ -447,7 +447,7 @@ namespace coc {
         };
 
         ParserConfig* config;
-        Log* log;
+        ParserLog * log;
         map<string,Argument*> arguments;
         map<string,string> arguments_u;
 
@@ -586,7 +586,7 @@ namespace coc {
             this->values->addValue(std::move(name),std::move(val_log), std::move(type),std::move(intro),std::move(def_val));
             return this;
         }
-        IAction(Options*options,Values*values,char short_cut,ParserConfig*config,Log*log):
+        IAction(Options*options,Values*values,char short_cut,ParserConfig*config, ParserLog *log):
                                                                                                     options(options),values(values),short_cut(short_cut)
         {
             this->options->config=config;
@@ -626,7 +626,7 @@ namespace coc {
             delete this->hf;
             hf=nullptr;
         }
-        HelpAction(string&& describe,IHelpFunc*hf,char short_cut,ParserConfig*config,Log*log):
+        HelpAction(string&& describe,IHelpFunc*hf,char short_cut,ParserConfig*config, ParserLog *log):
                                                                                                        IAction(new Options(),new Values(),short_cut,config,log)
         {
             this->describe=std::move(describe);
@@ -675,7 +675,7 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        AAction(ActionFun&& af,char short_cut,ParserConfig*config,Log*log):
+        AAction(ActionFun&& af,char short_cut,ParserConfig*config, ParserLog *log):
                                                                                   IAction(new Options(),new Values(),short_cut,config,log)
         {
             this->af=std::move(af);
@@ -694,7 +694,7 @@ namespace coc {
         inline const string & get_describe() override{
             return this->describe;
         }
-        Action(string&& describe, ActionFun&& af,char short_cut,ParserConfig*config,Log*log):
+        Action(string&& describe, ActionFun&& af,char short_cut,ParserConfig*config, ParserLog *log):
                                                                                                     AAction(std::move(af),short_cut,config,log)
         {
             this->describe=std::move(describe);
@@ -705,7 +705,7 @@ namespace coc {
         friend class Parser;
         friend struct HelpFunc;
     private:
-        Log* log;
+        ParserLog * log;
         ParserConfig *config;
         GlobalAction* global;
         map<string, IAction*> actions;
@@ -800,7 +800,7 @@ namespace coc {
         typedef void(*help_fun)(Parser*);
     private:
         ParserConfig *config;
-        Log *log;
+        ParserLog *log;
         bool is_def_hp = true;//if open default function
         help_fun hf;
         Actions *actions;
@@ -812,7 +812,7 @@ namespace coc {
             }
         }
     public:
-        Parser(ParserConfig *config,Log* log):
+        Parser(ParserConfig *config, ParserLog * log):
                                                  config(config),log(log), hf(nullptr)
         {
             this->arguments=new Arguments;
@@ -840,7 +840,7 @@ namespace coc {
             this->log= nullptr;
         }
         //over m_log
-        void loadLog(Log*_log){
+        void loadLog(ParserLog *_log){
             delete this->log;
             this->log= _log;
         }
@@ -867,7 +867,7 @@ namespace coc {
             return this->config;
         }
 
-        inline Log* get_log(){
+        inline ParserLog * get_log(){
             return this->log;
         }
 
