@@ -58,7 +58,6 @@ namespace coc {
 
     export struct ParserConfig{
         bool intellisense_mode=true;//not supported now
-        bool is_exit_if_not_found_option=true;
         bool argument_need_extern=true;
         string logo_and_version=
                 "coc v1.0.0\n"
@@ -155,14 +154,14 @@ namespace coc {
         }
 
         const char* atAbsoluteIndex(int index,const string&_default){
-            if(index-this->first->target_list.size()> -1){
+            if(index>= this->first->target_list.size()){
                 index-=static_cast<int>(this->first->target_list.size());
             }
             else{
                 return this->first->target_list[index].data();
             }
             for(auto iter:this->targets_list){
-                if(index-iter->target_list.size()> -1){
+                if(index>=iter->target_list.size()){
                     index-=static_cast<int>(iter->target_list.size());
                 }
                 else{
@@ -185,7 +184,7 @@ namespace coc {
         }
 
         const char* atOutOfRange(const string&option_name,int index,const string&_default){
-            if(index-this->first->target_list.size()> -1){
+            if(index>= this->first->target_list.size()){
                 index-=static_cast<int>(this->first->target_list.size());
             }
             else{
@@ -198,7 +197,7 @@ namespace coc {
                 }
             }
             for (;iter < this->targets_list.end(); ++iter) {
-                if(index-iter.operator*()->target_list.size()> -1){
+                if(index>=iter.operator*()->target_list.size()){
                     index-=static_cast<int>(iter.operator*()->target_list.size());
                 }
                 else{
@@ -277,7 +276,7 @@ namespace coc {
                             error_list->add([=,this]{this->log->unidentifiedOption(temp.data());});
                     }
                     else {
-                        bool error = true;
+                        bool error;
                         string_view options_str = str.substr(1, str.size() - 1);
                         for (auto iter_str: options_str) {
                             error=true;
