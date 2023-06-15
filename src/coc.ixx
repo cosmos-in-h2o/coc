@@ -14,6 +14,7 @@ export module coc;
 using namespace std;
 #undef COC_NULL_CHAR
 #define COC_NULL_CHAR '\0'
+#define COC_ERROR_INIT ErrorList*error_list=ErrorList::get_single();
 namespace coc {
     export class Parser;
     class Values;
@@ -23,12 +24,37 @@ namespace coc {
     private:
         typedef function<void(void)> error;
         list<error> error_list;
-        static ErrorList* single;
     public:
-        
+        static ErrorList* single;
+        static ErrorList* get_single(){
+            if(single== nullptr){
+                single=new ErrorList;
+            }
+            return single;
+        }
+
+        inline void add(const error& _error){
+            this->error_list.push_back(_error);
+        }
+        int invoke(){
+            int result=-1;
+            if(this->error_list.empty())
+                result=0;
+            else if(this->error_list.size()==1)
+                cout<<"\n\033[31mThere is 1 error:\033[0m\n";
+            else
+                cout<<"\n\033[31mThere are "<<this->error_list.size()<<" errors:\033[0m\n";
+            for(auto &iter:this->error_list){
+                iter();
+            }
+            delete ErrorList::single;
+            ErrorList::single = nullptr;
+            return result;
+        }
         ErrorList()=default;
         ~ErrorList()=default;
     };
+    ErrorList* ErrorList::single=nullptr;
 
     export struct ParserConfig{
         bool intellisense_mode=true;//not supported now
@@ -222,7 +248,7 @@ namespace coc {
             this->options.push_back(p);
         }
         //add opt_tar which user input.
-        bool run(list<string_view>& opt_tar){
+        void run(list<string_view>& opt_tar){
             /*
             * in this step complete:
             * Analysis of opt_tar
@@ -232,26 +258,29 @@ namespace coc {
              * after that
              * call none
              */
+            COC_ERROR_INIT
             for(auto str: opt_tar) {
-                cout<<"1";
                 if (str[0] == '-') {
                     if (str[1] == '-') {
+                        bool error=true;
+                        string_view temp=str.substr(2, str.size() - 2);
                         //if the 2nd char is -
                         for (auto iter_opt: this->options) {
                             //find right option
-                            if (iter_opt->name == str.substr(2, str.size() - 2)) {
+                            if (iter_opt->name == temp) {
+                                error= false;
                                 this->options_u.push_back(iter_opt);//add option ptr to options_u
                                 this->targets->run(iter_opt);
-                                return true;
                             }
                         }
-                        log->unidentifiedOption(str.data());
-                        return false;
+                        if(error)
+                            error_list->add([=,this]{this->log->unidentifiedOption(temp.data());});
                     }
                     else {
                         bool error = true;
                         string_view options_str = str.substr(1, str.size() - 1);
                         for (auto iter_str: options_str) {
+                            error=true;
                             for (auto iter_opt: this->options) {
                                 if (iter_opt->short_name != COC_NULL_CHAR && iter_str == iter_opt->short_name) {
                                     this->options_u.push_back(iter_opt);//add option ptr to options_u
@@ -259,24 +288,15 @@ namespace coc {
                                     error = false;
                                 }
                             }
-                            if (error) {
-                                log->unidentifiedOption(iter_str);
-                                if (config->is_exit_if_not_found_option) {
-                                    return false;
-                                }
-                            }
+                            if (error)
+                                error_list->add([=,this]{this->log->unidentifiedOption(iter_str);});
                         }
-                        if (!config->is_exit_if_not_found_option) {
-                            return true;
-                        }
-                        return !error;
                     }
                 }
                 else{
                     this->targets->run(str);
                 }
             }
-            return true;
         }
     public:
         Options():
@@ -356,7 +376,7 @@ namespace coc {
             this->values.push_back(new Values::Value(std::move(name),std::move(val_log),std::move(type),std::move(intro),std::move(def_val)));
         }
         //put run and get value that user input
-        bool run(){
+        void run(){
             /*
             * in this step complete:
             * Analysis of values
@@ -366,14 +386,14 @@ namespace coc {
              * after that
              * call none
              */
+            COC_ERROR_INIT
             string buff;
             for(auto iter:this->values){
                 log->valueLog(iter->value_log,iter->default_value);
                 getline(std::cin,buff);
                 if(buff.empty()){
                     if(iter->default_value.empty()){
-                        log->noValueEntered(iter->value_name);
-                        return false;
+                        error_list->add([=,this]{this->log->noValueEntered(iter->value_name);});
                     }
                     else{
                         this->values_u[iter->value_name]=iter->default_value;
@@ -382,7 +402,6 @@ namespace coc {
                 }
                 this->values_u[iter->value_name]=buff;
             }
-            return true;
         }
     public:
         Values():
@@ -437,7 +456,7 @@ namespace coc {
         inline void addArgument(string&& argument_name,string&& argument_type,string&& describe){
             this->arguments[std::move(argument_name)]=new Argument(std::move(argument_type),std::move(describe));
         }
-        bool run(string_view argv){
+        void run(string_view argv){
             /*
             * in this step complete:
             * Analysis of argument
@@ -447,6 +466,7 @@ namespace coc {
              * after that
              * call none
              */
+            COC_ERROR_INIT
             string key;
             string value;
             string buff;
@@ -465,14 +485,12 @@ namespace coc {
                 if (p != this->arguments.end()) {
                     this->arguments_u[key] = value;
                 } else {
-                    log->unidentifiedArgument(key);
-                    return false;
+                    error_list->add([=,this]{this->log->unidentifiedArgument(key);});
                 }
             }
             else{
                 this->arguments_u[key]=value;
             }
-            return true;
         }
     public:
         Arguments():
@@ -554,8 +572,8 @@ namespace coc {
         friend class Actions;
         friend struct HelpFunc;
     protected:
-        virtual int run()=0;
-        virtual int run(list<string_view>&opt_tar, Arguments *arguments)=0;
+        virtual void run()=0;
+        virtual void run(list<string_view>&opt_tar, Arguments *arguments)=0;
         char short_cut{};
         Options* options;
         Values* values;
@@ -594,16 +612,14 @@ namespace coc {
     private:
         string describe;
         IHelpFunc* hf;
-        inline int run() override{
-            if (!this->values->run()) return -1;
+        inline void run() override{
+            this->values->run();
             this->hf->run(Getter(this->values));
-            return 0;
         }
-        int run(list<string_view> &opt_tar, coc::Arguments *arguments) override{
-            if(!this->options->run(opt_tar)) return -1;
-            if(!this->values->run()) return -1;
+        void run(list<string_view> &opt_tar, coc::Arguments *arguments) override{
+            this->options->run(opt_tar);
+            this->values->run();
             this->hf->run(Getter(this->options,this->values,arguments));
-            return 0;
         }
 
     public:
@@ -631,12 +647,11 @@ namespace coc {
         ActionFun af;
 
     private:
-        inline int run() override {
-            if (!this->values->run()) return -1;
+        inline void run() override {
+            this->values->run();
             this->af(Getter(this->values));
-            return 0;
         }
-        inline int run(list<string_view>&opt_tar, Arguments *arguments) override{
+        inline void run(list<string_view>&opt_tar, Arguments *arguments) override{
             /*
             * in this step complete:
             * do nothing,only call function
@@ -648,10 +663,9 @@ namespace coc {
              * call values' run()
              */
 
-            if(!this->options->run(opt_tar)) return -1;
-            if(!this->values->run()) return -1;
+            this->options->run(opt_tar);
+            this->values->run();
             this->af(Getter(this->options,this->values,arguments));
-            return 0;
         }
     public:
         constexpr const string & get_describe() override{return "null";}
@@ -709,27 +723,25 @@ namespace coc {
                 return false;
             return true;
         }
-        int run(const string& action_name){
+
+        void run(const string& action_name){
+            COC_ERROR_INIT
             if(action_name.size()==1){
                 for(auto &[k,v]: this->actions){
                     //if it has shortcut and the action name equal to shortcut
                     if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
-                        v->run();
-                        return 0;
+                        return v->run();
                     }
                 }
             }
             auto p = this->actions.find(action_name);
             if (p == this->actions.end()) {
-
-                log->notFoundAction(action_name);
-                return -1;
+                return error_list->add([=,this]{this->log->notFoundAction(action_name);});
             }
             p->second->run();
-            return 0;
-        }
+       }
         //if error,the function will return -1
-        int run(const string& action_name,list<string_view>& opt_tar,Arguments *arguments) {
+        void run(const string& action_name,list<string_view>& opt_tar,Arguments *arguments) {
             /*
             * in this step complete:
             * find the designated action
@@ -739,21 +751,18 @@ namespace coc {
              * after that
              * call action's run()
              */
-
+            COC_ERROR_INIT
             //if it's only one letter ,then it maybe shortcut
             if(action_name.size()==1){
                 for(auto &[k,v]: this->actions){
                     //if it has shortcut and the action name equal to shortcut
-                    if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut){
+                    if(v->short_cut!= COC_NULL_CHAR &&action_name[0]==v->short_cut)
                         return v->run(opt_tar, arguments);
-                    }
                 }
             }
             auto p = this->actions.find(action_name);
             if (p == this->actions.end()) {
-
-                log->notFoundAction(action_name);
-                return -1;
+               return error_list->add([=,this]{this->log->notFoundAction(action_name);});
             }
             return p->second->run(opt_tar, arguments);
         }
@@ -894,22 +903,27 @@ namespace coc {
 #define COC_IS_GLOBAL
 #define COC_IS_COMMON
             bool is_common;
+            COC_ERROR_INIT
             //optimize
             if(this->actions->global!=nullptr){
                 is_common=this->actions->isHavaAction(argv[1]);
                 if(argc==1&&!is_common) {
                     COC_IS_GLOBAL
-                    return this->actions->global->run();
+                    this->actions->global->run();
+                    return error_list->invoke();
                 }
                 else if(argc==2&&is_common){
                     COC_IS_COMMON
-                    return this->actions->run(argv[1]);
+                    this->actions->run(argv[1]);
+                    return error_list->invoke();
                 }
             }
             else{
                 COC_IS_COMMON
-                if(argc==2)
-                    return this->actions->run(argv[1]);
+                if(argc==2) {
+                    this->actions->run(argv[1]);
+                    return error_list->invoke();
+                }
                 is_common=true;
             }
             //analyse
@@ -925,8 +939,7 @@ namespace coc {
             for(auto&p:all_argv){
                 if(p[0]=='-') {
                     if (p[1] == this->config->argument_mark) {
-                        if(!arguments->run(p))
-                            return -1;
+                        arguments->run(p);
                     }
                     else{
                         opt_tar.push_back(p);
@@ -939,15 +952,16 @@ namespace coc {
             //execute
             if(!is_common){
                 if(this->actions->global==nullptr) {
-                    this->log->globalActionNotDoesNotExist();
-                    return -1;
+                    error_list->add([=,this]{this->log->globalActionNotDoesNotExist();});
+                    return error_list->invoke();
                 }
                 else {
-                    return this->actions->global->run(opt_tar, this->arguments);
+                    this->actions->global->run(opt_tar, this->arguments);
+                    return error_list->invoke();
                 }
             }
-            return this->actions->run(argv[1],opt_tar,this->arguments);
-
+            this->actions->run(argv[1],opt_tar,this->arguments);
+            return error_list->invoke();
         }
     };
 
