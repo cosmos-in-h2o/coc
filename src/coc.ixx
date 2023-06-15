@@ -7,6 +7,7 @@ module;
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 export module coc;
 
@@ -17,6 +18,17 @@ namespace coc {
     export class Parser;
     class Values;
     class Option;
+
+    struct ErrorList{
+    private:
+        typedef function<void(void)> error;
+        list<error> error_list;
+        static ErrorList* single;
+    public:
+        
+        ErrorList()=default;
+        ~ErrorList()=default;
+    };
 
     export struct ParserConfig{
         bool intellisense_mode=true;//not supported now
@@ -79,12 +91,12 @@ namespace coc {
         friend class Parser;
     private:
         struct Target{
-            Option* option{};
+            Option* option;
             vector<string_view>target_list;
             explicit Target(Option*opt)
                 :option(opt)
             {}
-            Target() = default;
+            Target():option(nullptr){}
         };
         Target *first;
         vector<Target*>targets_list;
@@ -92,11 +104,10 @@ namespace coc {
             this->targets_list.push_back(new Target(opt));
         }
         void run(string_view target){
-            if(this->targets_list.empty()) {
+            if(this->targets_list.empty())
                 this->first->target_list.push_back(target);
-                return;
-            }
-            this->targets_list.rbegin().operator*()->target_list.push_back(target);
+            else
+                this->targets_list.back()->target_list.push_back(target);
         }
     public:
         Targets(){
@@ -222,6 +233,7 @@ namespace coc {
              * call none
              */
             for(auto str: opt_tar) {
+                cout<<"1";
                 if (str[0] == '-') {
                     if (str[1] == '-') {
                         //if the 2nd char is -
@@ -327,7 +339,6 @@ namespace coc {
         friend class HelpAction;
         friend class Parser;
         friend struct HelpFunc;
-
     private:
         struct Value{
             string value_name,value_log,value_type, intro,default_value;
@@ -413,7 +424,7 @@ namespace coc {
             string argument_type,describe;
 
             Argument(string&& argument_type,string&& describe):
-                    argument_type(std::move(argument_type)),describe(std::move(describe))
+                                                                  argument_type(std::move(argument_type)),describe(std::move(describe))
             {}
         };
 
@@ -550,11 +561,11 @@ namespace coc {
         Values* values;
     public:
         virtual const string& get_describe()=0;
-        virtual IAction* addOption(string name,string intro,int num,char s_name =COC_NULL_CHAR) {
+        IAction* addOption(string name,string intro,int num,char s_name =COC_NULL_CHAR) {
             this->options->addOption(std::move(name), std::move(intro),num, s_name);
             return this;
         }
-        virtual IAction* addValue(string name,string val_log,string type,string intro,string def_val ="") {
+        IAction* addValue(string name,string val_log,string type,string intro,string def_val ="") {
             this->values->addValue(std::move(name),std::move(val_log), std::move(type),std::move(intro),std::move(def_val));
             return this;
         }
@@ -601,7 +612,7 @@ namespace coc {
             hf=nullptr;
         }
         HelpAction(string&& describe,IHelpFunc*hf,char short_cut,ParserConfig*config,Log*log):
-                                                                                                      IAction(new Options(),new Values(),short_cut,config,log)
+                                                                                                       IAction(new Options(),new Values(),short_cut,config,log)
         {
             this->describe=std::move(describe);
             this->hf=hf;
@@ -643,7 +654,7 @@ namespace coc {
             return 0;
         }
     public:
-        inline const string & get_describe() override{return "null"s;}
+        constexpr const string & get_describe() override{return "null";}
 
         ~AAction() override{
             delete this->options;
@@ -651,10 +662,10 @@ namespace coc {
             delete this->values;
             this->values=nullptr;
         }
-        AAction(ActionFun af,char short_cut,ParserConfig*config,Log*log):
-                                                                                IAction(new Options(),new Values(),short_cut,config,log)
+        AAction(ActionFun&& af,char short_cut,ParserConfig*config,Log*log):
+                                                                                  IAction(new Options(),new Values(),short_cut,config,log)
         {
-            this->af=af;
+            this->af=std::move(af);
         }
     };
 
@@ -670,8 +681,8 @@ namespace coc {
         inline const string & get_describe() override{
             return this->describe;
         }
-        Action(string&& describe, ActionFun af,char short_cut,ParserConfig*config,Log*log):
-                                                                                                 AAction(af,short_cut,config,log)
+        Action(string&& describe, ActionFun&& af,char short_cut,ParserConfig*config,Log*log):
+                                                                                                    AAction(std::move(af),short_cut,config,log)
         {
             this->describe=std::move(describe);
         }
@@ -761,16 +772,16 @@ namespace coc {
         }
 
         //add an action
-        inline IAction* addAction(string&& action_name,string&& describe, ActionFun & af,char short_cut= COC_NULL_CHAR){
-            auto action =new Action(std::move(describe),af,short_cut,this->config,this->log);
-            this->actions[action_name]=action;
+        inline IAction* addAction(string&& _name,string&& _intro, ActionFun&& _af,char _short_cut= COC_NULL_CHAR){
+            auto action =new Action(std::move(_intro),std::move(_af),_short_cut,this->config,this->log);
+            this->actions[_name]=action;
             return action;
         }
 
         //add a help action
-        inline IAction* addHelpAction(string&& action_name,string&& describe,IHelpFunc* hf,char short_cut= COC_NULL_CHAR){
-            auto* action =new HelpAction(std::move(describe),hf,short_cut,this->config,this->log);
-            this->actions[action_name]=action;
+        inline IAction* addHelpAction(string&& _name,string&& _intro,IHelpFunc* _hf,char _short_cut= COC_NULL_CHAR){
+            auto* action =new HelpAction(std::move(_intro),_hf,_short_cut,this->config,this->log);
+            this->actions[_name]=action;
             return action;
         }
     };
@@ -821,26 +832,26 @@ namespace coc {
             this->log= nullptr;
         }
         //over m_log
-        void loadLog(Log*m_log){
+        void loadLog(Log*_log){
             delete this->log;
-            this->log= m_log;
+            this->log= _log;
         }
         //over config
-        void loadConfig(ParserConfig *m_config){
+        void loadConfig(ParserConfig *_config){
             delete this->config;
-            this->config= m_config;
+            this->config= _config;
         }
         //only package with a layer
-        inline IAction* addAction(string action_name,string describe,ActionFun& af,char short_cut= COC_NULL_CHAR){
-            return this->actions->addAction(std::move(action_name),std::move(describe),af,short_cut);
+        inline IAction* addAction(string _name,string _intro,ActionFun _af=coc_empty,char _short_cut= COC_NULL_CHAR){
+            return this->actions->addAction(std::move(_name),std::move(_intro),std::move(_af),_short_cut);
         }
         //only package with a layer
-        inline IAction* addHelpAction(string action_name,string describe,IHelpFunc*m_hf,char short_cut= COC_NULL_CHAR){
-            return this->actions->addHelpAction(std::move(action_name),std::move(describe), m_hf,short_cut);
+        inline IAction* addHelpAction(string _name,string _intro,IHelpFunc*_hf,char _short_cut= COC_NULL_CHAR){
+            return this->actions->addHelpAction(std::move(_name),std::move(_intro), _hf,_short_cut);
         }
         //only package with a layer
-        inline Parser* addArgument(string argument_name,string argument_type,string describe){
-            this->arguments->addArgument(std::move(argument_name),std::move(argument_type),std::move(describe));
+        inline Parser* addArgument(string _name,string _type,string _intro){
+            this->arguments->addArgument(std::move(_name),std::move(_type),std::move(_intro));
             return this;
         }
         //get and set function
@@ -852,9 +863,9 @@ namespace coc {
             return this->log;
         }
 
-        inline IAction* set_global_actions(ActionFun af){
+        inline IAction* set_global_actions(ActionFun _af){
             if(this->actions->global==nullptr)
-                this->actions->global=new GlobalAction(std::move(af),COC_NULL_CHAR,this->config,this->log);
+                this->actions->global=new GlobalAction(std::move(_af),COC_NULL_CHAR,this->config,this->log);
             return this->actions->global;
         }
 
@@ -862,9 +873,9 @@ namespace coc {
             return this->arguments;
         }
         //set help function
-        void set_help(help_fun &m_hf){
+        void set_help(help_fun &_hf){
             this->is_def_hp= false;
-            this->hf = m_hf;
+            this->hf = _hf;
         }
 
         int run(int argc,char** argv) {
@@ -891,8 +902,8 @@ namespace coc {
                     return this->actions->global->run();
                 }
                 else if(argc==2&&is_common){
-                   COC_IS_COMMON
-                   return this->actions->run(argv[1]);
+                    COC_IS_COMMON
+                    return this->actions->run(argv[1]);
                 }
             }
             else{
@@ -901,7 +912,6 @@ namespace coc {
                     return this->actions->run(argv[1]);
                 is_common=true;
             }
-
             //analyse
             list<string_view> all_argv;//all cmd argv
             list<string_view> opt_tar;
@@ -917,6 +927,9 @@ namespace coc {
                     if (p[1] == this->config->argument_mark) {
                         if(!arguments->run(p))
                             return -1;
+                    }
+                    else{
+                        opt_tar.push_back(p);
                     }
                 }
                 else {
