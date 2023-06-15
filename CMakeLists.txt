@@ -9,7 +9,7 @@ project(coc LANGUAGES CXX C)
 
 # target
 set(CMAKE_CXX_COMPILER "/usr/local/llvm/bin/clang++")
-add_executable(coc "" src/coc.ixx)
+add_executable(coc "" src/coc.ixx src/coc.hpp)
 set_target_properties(coc PROPERTIES OUTPUT_NAME "coc")
 set_target_properties(coc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/target")
 add_custom_command(OUTPUT output_coc_4E023D60
