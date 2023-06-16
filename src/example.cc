@@ -1,65 +1,49 @@
-//example.cc
+import coc;
 #include <iostream>
-#include <functional>
-#include <vector>
-#include <string>
 
-#include "coc.hpp"
-//import coc;
-#include <chrono>
-using namespace std;
 using namespace coc;
-void test(Getter g){
-    g.get_opt()->getOption("foption");
-    g.get_opt()->getOption("soption");
-    g.get_opt()->getOption("toption");
-    g.get_arg()->getString("farg","farg");
-    g.get_arg()->getString("sarg","sarg");
-    g.get_arg()->getString("targ","targ");
-    g.get_tar()->at("foption",0,"default");
-    g.get_tar()->at("foption",1,"default");
-    g.get_tar()->at("foption",2,"default");
-    g.get_tar()->at("soption",0,"default");
-    g.get_tar()->at("soption",1,"default");
-    g.get_tar()->at("soption",2,"default");
-    g.get_tar()->at("toption",0,"default");
-    g.get_tar()->at("toption",1,"default");
-    g.get_tar()->at("toption",2,"default");
+using namespace std;
+
+void action1(Getter g){
+    cout<<"option test:\n";
+    cout<<g.get_opt()->at(0)<<'\n';
+    cout<<g.get_opt()->getOption('o')<<'\n';
+    cout<<g.get_opt()->isOnlyOpt("option")<<'\n';
+    for(auto iter:g.get_opt()->get_list()){
+        cout<<iter->name<<'\n';
+    }
+}
+void action2(Getter g){
+    cout<<"value test:\n";
+    cout<<g.get_val()->getString("value1")<<'\n';
+    cout<<g.get_val()->getInt("value2")<<'\n';
+}
+void action3(Getter g){
+    cout<<"target test:\n";
+    cout<<g.get_tar()->at(0,"default target");
+    cout<<g.get_tar()->at("fseparator",0,"default target");
+    cout<<g.get_tar()->atAbsoluteIndex(3,"default target");
+    cout<<g.get_tar()->atOutOfRange("sseparator",2,"default target");
 }
 
-int main(int argc,char**argv) {
-    auto *config = new ParserConfig;
-    auto *log = new ParserLog;
-    Parser parser(config, log);
-    IHelpFunc *hf=new HelpFunc(config,&parser);
-    parser.addAction("test1","this is a test",test)
-            ->addOption("foption","",1,'f')
-            ->addOption("soption","",2,'s')
-            ->addOption("toption","",3,'t');
-    parser.addAction("test2","this is a test",test)
-            ->addOption("foption","",1,'f')
-            ->addOption("soption","",2,'s')
-            ->addOption("toption","",3,'t');
-    parser.addAction("test3","this is a test",test)
-            ->addOption("foption","",1,'f')
-            ->addOption("soption","",2,'s')
-            ->addOption("toption","",3,'t');
-    parser.addAction("test4","this is a test",test)
-            ->addOption("foption","",1,'f')
-            ->addOption("soption","",2,'s')
-            ->addOption("toption","",3,'t');
-    parser.addArgument("farg","string","")
-            ->addArgument("sarg","string","")
-            ->addArgument("targ","string","");
+int main(int argc ,char**argv){
+    auto config=new ParserConfig;
+    auto log=new ParserLog;
+    Parser parser=Parser(config,log);
+    parser.addAction("action1","this is a action",action1,'a')
+            ->addOption("option","this is a option",1,'o')
+            ->addOption("another","this is another option",2,'a');
+    parser.addAction("action2","this is a action",action2)
+            ->addValue("value1","please input","string","this is a value")
+            ->addValue("value2","please input","int","this is a value","111");
+    parser.addAction("action3","this is a action",action3)
+            ->addOption("fseparator","this is a separator",1,'f')
+            ->addOption("sseparator","this is a separator",1,'s');
+    parser.set_global_actions([](Getter g){
+        cout<<"global and argument:\n";
+        cout<<g.get_arg()->getString("arg","default argument");
+    });
+    parser.addArgument("arg","string","this is a arg");
 
-    auto start = std::chrono::high_resolution_clock::now();
-
-    int result=parser.run(argc, argv);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-
-    // 输出执行时间
-    std::cout << duration.count()*1000 << " ms\n";
-    return result;
+    return parser.run(argc,argv);
 }
