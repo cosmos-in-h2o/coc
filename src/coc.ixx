@@ -562,7 +562,7 @@ namespace coc {
     };
 
     //Action function pointer
-    using ActionFun =function<void(Getter)>;
+    export using ActionFun =function<void(Getter)>;
 
     export ActionFun coc_empty=[](Getter){return;};
 
