@@ -439,10 +439,10 @@ namespace coc {
         friend struct HelpFunc;
     private:
         struct Argument{
-            string argument_type,describe;
+            string argument_type, intro;
 
-            Argument(string&& argument_type,string&& describe):
-                                                                  argument_type(std::move(argument_type)),describe(std::move(describe))
+            Argument(string&& argument_type,string&&intro):
+                                                                  argument_type(std::move(argument_type)), intro(std::move(intro))
             {}
         };
 
@@ -452,8 +452,8 @@ namespace coc {
         map<string,string> arguments_u;
 
         //add an argument to list
-        inline void addArgument(string&& argument_name,string&& argument_type,string&& describe){
-            this->arguments[std::move(argument_name)]=new Argument(std::move(argument_type),std::move(describe));
+        inline void addArgument(string&& _name,string&& _type,string&&_intro){
+            this->arguments[std::move(_name)]=new Argument(std::move(_type),std::move(_intro));
         }
         void run(string_view argv){
             /*
@@ -577,13 +577,13 @@ namespace coc {
         Options* options;
         Values* values;
     public:
-        virtual const string& get_describe()=0;
-        IAction* addOption(string name,string intro,int num,char s_name =COC_NULL_CHAR) {
-            this->options->addOption(std::move(name), std::move(intro),num, s_name);
+        virtual const string&get_intro()=0;
+        IAction* addOption(string _name,string _intro,int _num,char _s_name =COC_NULL_CHAR) {
+            this->options->addOption(std::move(_name), std::move(_intro),_num, _s_name);
             return this;
         }
-        IAction* addValue(string name,string val_log,string type,string intro,string def_val ="") {
-            this->values->addValue(std::move(name),std::move(val_log), std::move(type),std::move(intro),std::move(def_val));
+        IAction* addValue(string _name,string _log,string _type,string _intro,string _def_val ="") {
+            this->values->addValue(std::move(_name),std::move(_log), std::move(_type),std::move(_intro),std::move(_def_val));
             return this;
         }
         IAction(Options*options,Values*values,char short_cut,ParserConfig*config, ParserLog *log):
@@ -609,7 +609,7 @@ namespace coc {
 
     class HelpAction:public IAction{
     private:
-        string describe;
+        string intro;
         IHelpFunc* hf;
         inline void run() override{
             this->values->run();
@@ -626,15 +626,15 @@ namespace coc {
             delete this->hf;
             hf=nullptr;
         }
-        HelpAction(string&& describe,IHelpFunc*hf,char short_cut,ParserConfig*config, ParserLog *log):
+        HelpAction(string&&intro,IHelpFunc*hf,char short_cut,ParserConfig*config, ParserLog *log):
                                                                                                        IAction(new Options(),new Values(),short_cut,config,log)
         {
-            this->describe=std::move(describe);
+            this->intro =std::move(intro);
             this->hf=hf;
         }
 
-        inline const string& get_describe() override{
-            return this->describe;
+        inline const string&get_intro() override{
+            return this->intro;
         }
     };
 
@@ -667,7 +667,7 @@ namespace coc {
             this->af(Getter(this->options,this->values,arguments));
         }
     public:
-        constexpr const string & get_describe() override{return "null";}
+        const string &get_intro() override{return "null";}
 
         ~AAction() override{
             delete this->options;
@@ -691,7 +691,7 @@ namespace coc {
     private:
         string describe;
     public:
-        inline const string & get_describe() override{
+        inline const string &get_intro() override{
             return this->describe;
         }
         Action(string&& describe, ActionFun&& af,char short_cut,ParserConfig*config, ParserLog *log):
@@ -709,16 +709,16 @@ namespace coc {
         ParserConfig *config;
         GlobalAction* global;
         map<string, IAction*> actions;
-        bool isHavaAction(const string& name){
-            if(name.size()==1){
+        bool isHavaAction(const string&_name){
+            if(_name.size()==1){
                 bool result=false;
                 for(auto&[k,v]:this->actions){
-                    if(v->short_cut!=COC_NULL_CHAR&&v->short_cut==name[0])
+                    if(v->short_cut!=COC_NULL_CHAR&&v->short_cut== _name[0])
                         result=true;
                 }
                 return result;
             }
-            if (this->actions.find(name) == this->actions.end())
+            if (this->actions.find(_name) == this->actions.end())
                 return false;
             return true;
         }
@@ -995,7 +995,7 @@ namespace coc {
                         cout << '\t' << v->short_cut << ',';
                     else
                         cout << '\t' << "  ";
-                    cout << k << '\t' << v->get_describe() << '\n';
+                    cout << k << '\t' << v->get_intro() << '\n';
                 }
             }
         }
@@ -1012,15 +1012,15 @@ namespace coc {
             if(!parser->arguments->arguments.empty()){
                 cout<<"Arguments:\n";
                 for (auto &[k,v]: parser->arguments->arguments) {
-                    cout<<'\t' <<k<<"\tType:"<<v->argument_type<<'\t'<<v->describe <<'\n';
+                    cout<<'\t' <<k<<"\tType:"<<v->argument_type<<'\t'<<v->intro <<'\n';
                 }
             }
         }
 
-        static void printOptions(Options*options){
-            if(!options->options.empty()) {
+        static void printOptions(Options*_options){
+            if(!_options->options.empty()) {
                 cout << "Options(Global):\n";
-                for (auto p: options->options) {
+                for (auto p: _options->options) {
                     if (p->short_name != COC_NULL_CHAR)
                         cout << "\t-" << p->short_name << ',';
                     else
@@ -1030,10 +1030,10 @@ namespace coc {
             }
         }
 
-        static void printValues(Values*values){
-            if(!values->values.empty()){
+        static void printValues(Values*_values){
+            if(!_values->values.empty()){
                 cout<<"Values(Global):\n";
-                for (auto p: values->values) {
+                for (auto p: _values->values) {
                     cout<<'\t' <<p->value_name<<"\tType:"<<p->value_type<<'\t'<< p->intro;
                     if(!p->default_value.empty()){
                         cout<<"\tDefault="<<p->default_value;
@@ -1043,9 +1043,9 @@ namespace coc {
             }
         }
 
-        static void printAction(IAction* action){
-            HelpFunc::printOptions(action->options);
-            HelpFunc::printValues(action->values);
+        static void printAction(IAction*_action){
+            HelpFunc::printOptions(_action->options);
+            HelpFunc::printValues(_action->values);
         }
 
         HelpFunc(ParserConfig*config,Parser*parser):
