@@ -106,7 +106,7 @@ namespace coc {
         int number;
         char short_name;
         Option(string&& name,string&&intro,int number,char short_name):
-                                                                             name(std::move(name)), intro(std::move(intro)),number(number), short_name(short_name)
+              name(std::move(name)), intro(std::move(intro)),number(number), short_name(short_name)
         {}
     };
 
