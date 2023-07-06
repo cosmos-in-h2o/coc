@@ -3,56 +3,7 @@
 # do not edit by hand.
 
 # project
-cmake_minimum_required(VERSION 3.15.0)
-cmake_policy(SET CMP0091 NEW)
+cmake_minimum_required(VERSION 3.26.0)
+set(CXX_STANDARD 20)
 project(coc LANGUAGES CXX C)
-
-# target
-set(CMAKE_CXX_COMPILER "/usr/local/llvm/bin/clang++")
-add_executable(coc "" src/coc.ixx src/coc.hpp)
-set_target_properties(coc PROPERTIES OUTPUT_NAME "coc")
-set_target_properties(coc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/target")
-add_custom_command(OUTPUT output_coc_4E023D60
-    COMMAND echo [  0%]: compiling.module.debug coc
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/build/.objs/coc/linux/x86_64/debug/src
-    COMMAND /usr/local/llvm/bin/clang -Qunused-arguments -m64 -g -O0 -std=c++20
-    COMMAND /usr/local/llvm/bin/clang -Qunused-arguments -m64 -g -O0 -std=c++20 -fmodules-cache-path=${CMAKE_SOURCE_DIR}/build/.gens/coc/linux/x86_64/debug/rules/modules/cache -c ${CMAKE_SOURCE_DIR}/build/.gens/coc/linux/x86_64/debug/rules/modules/cache/73ac706e/coc.pcm -o ${CMAKE_SOURCE_DIR}/build/.objs/coc/linux/x86_64/debug/src/coc.ixx.o
-    VERBATIM
-)
-add_custom_target(target_coc_4E023D60
-    DEPENDS output_coc_4E023D60
-)
-add_dependencies(coc target_coc_4E023D60)
-target_compile_options(coc PRIVATE
-    $<$<COMPILE_LANGUAGE:C>:-m64>
-    $<$<COMPILE_LANGUAGE:CXX>:-m64>
-)
-set_source_files_properties(${CMAKE_SOURCE_DIR}/src/example.cc PROPERTIES COMPILE_OPTIONS
-    "$<$<COMPILE_LANGUAGE:CXX>:-fmodule-file=${CMAKE_SOURCE_DIR}/coc=build/.gens/coc/linux/x86_64/debug/rules/modules/cache/73ac706e/coc.pcm>"
-)
-set_target_properties(coc PROPERTIES CXX_EXTENSIONS OFF)
-target_compile_features(coc PRIVATE cxx_std_20)
-if(MSVC)
-    target_compile_options(coc PRIVATE $<$<CONFIG:Debug>:-Od>)
-else()
-    target_compile_options(coc PRIVATE -O0)
-endif()
-if(MSVC)
-    target_compile_options(coc PRIVATE -Zi)
-else()
-    target_compile_options(coc PRIVATE -g)
-endif()
-if(MSVC)
-    set_property(TARGET coc PROPERTY
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-target_link_libraries(coc PRIVATE
-    ${CMAKE_SOURCE_DIR}/build/.objs/coc/linux/x86_64/debug/src/coc.ixx.o
-)
-target_link_options(coc PRIVATE
-    -m64
-)
-target_sources(coc PRIVATE
-    src/example.cc
-)
-
+add_executable(${PROJECT_NAME} src/coc.ixx src/example.cc)
