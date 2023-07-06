@@ -9,3 +9,8 @@
 **/.cache/
 target/
 compile_commands.json
+CMakeLists.txt
+CMkaeSettings.json
+**.pdb
+**.exe
+./out/
