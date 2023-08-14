@@ -78,11 +78,6 @@ namespace coc {
         return _default;
     }
     std::string_view Targets::atOutOfRange(const std::string &option_name, int index, const std::string &_default) {
-        if (index >= this->first->target_list.size()) {
-            index -= static_cast<int>(this->first->target_list.size());
-        } else {
-            return this->first->target_list[index];
-        }
         auto iter = this->targets_list.begin();
         for (; iter < this->targets_list.end(); ++iter) {
             if (iter.operator*()->option->name == option_name) {
