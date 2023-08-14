@@ -1,8 +1,7 @@
 add_rules("mode.debug", "mode.release")
 add_languages("c++20")
+
 target("coc")
-    add_toolchains("msvc")
     set_kind("binary")
     set_targetdir("target/")
-    add_files("src/*.ixx")
     add_files("src/*.cc")
