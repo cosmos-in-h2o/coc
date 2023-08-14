@@ -1,13 +1,14 @@
 module;
+#include <algorithm>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
-#include <iostream>
 module coc;
+
 #ifdef COC_NULL_CHAR
 #undef COC_NULL_CHAR
 #endif
@@ -24,9 +25,6 @@ namespace coc {
         return single;
     }
 
-    inline void ErrorList::add(const error &_error) {
-        this->error_list.push_back(_error);
-    }
     int ErrorList::invoke() {
         int result = -1;
         if (this->error_list.empty())
@@ -44,32 +42,7 @@ namespace coc {
     }
     ErrorList *ErrorList::single = nullptr;
 
-    inline void PrefabParserLog::unidentifiedArgument(std::string_view argument) {
-        std::cout << "Error:Unidentified argument:" << argument << ".\n";
-    }
-    inline void PrefabParserLog::unidentifiedOption(std::string_view option) {
-        std::cout << "Error:Unidentified option:--" << option << ".\n";
-    }
-    inline void PrefabParserLog::unidentifiedOption(char option) {
-        std::cout << "Error:Unidentified option:-" << option << ".\n";
-    }
-    inline void PrefabParserLog::noValueEntered(std::string_view value) {
-        std::cout << "Error:Value: " << value << " not assigned.\n";
-    }
-    inline void PrefabParserLog::notFoundAction(std::string_view action) {
-        std::cout << "Error:Not found action:" << action << ".\n";
-    }
-    inline void PrefabParserLog::valueLog(std::string_view value_log, std::string_view default_value) {
-        if (!default_value.empty())
-            std::cout << value_log << "(default=" << default_value << "):\n";
-        else
-            std::cout << value_log << ":\n";
-    }
-    inline void PrefabParserLog::globalActionNotDoesNotExist() {
-        std::cout << "Error:Global action doesn't exist.\n";
-    }
-
-    inline void Targets::run(coc::Option *opt) {
+    void Targets::run(coc::Option *opt) {
         this->targets_list.push_back(new Target(opt));
     }
     void Targets::run(std::string_view target) {
@@ -142,30 +115,7 @@ namespace coc {
         }
         return _default;
     }
-    size_t Targets::size() {
-        size_t result = this->first->target_list.size();
-        for (auto iter: this->targets_list) {
-            result += iter->target_list.size();
-        }
-        return result;
-    }
-    inline size_t Targets::size_f() {
 
-        return this->first->target_list.size();
-    }
-    size_t Targets::size(const std::string &option_name) {
-        for (auto iter: this->targets_list) {
-            if (iter->option->name == option_name) {
-                return iter->target_list.size();
-            }
-        }
-        return 0;
-    }
-
-    void Options::addOption(std::string_view name, std::string_view intro, int number, char short_name) {
-        auto p = new Option{name, intro, number, short_name};
-        this->options.push_back(p);
-    }
     void Options::run(std::list<std::string_view> &opt_tar) {
         /*
             * in this step complete:
@@ -223,29 +173,7 @@ namespace coc {
             p = nullptr;
         }
     }
-    inline std::vector<Option *> &Options::get_options() {
-        return this->options;
-    }
-    inline int Options::at(int index) {
-        if (index >= this->options_u.size()) {
-            return -1;
-        }
-        return this->options_u[index]->number;
-    }
-    inline int Options::operator[](int index) {
-        return this->at(index);
-    }
-    inline bool Options::getOption(const std::string &option) {
-        return std::ranges::any_of(options_u, [&](auto iter) {
-            return iter->name == option;
-        });
-    }
-    inline bool Options::getOption(char short_name) {
-        return std::ranges::any_of(options_u, [&](auto iter) {
-            return iter->short_name == short_name;
-        });
-    }
-    inline bool Options::isOnlyOpt(const std::string &option) {
+    bool Options::isOnlyOpt(const std::string &option) {
         if (this->options_u.size() == 1) {
             for (auto iter: this->options_u) {
                 if (iter->name == option)
@@ -254,7 +182,7 @@ namespace coc {
         }
         return false;
     }
-    inline bool Options::isOnlyOpt(char short_name) {
+    bool Options::isOnlyOpt(char short_name) {
         if (this->options_u.size() == 1) {
             for (auto iter: this->options_u) {
                 if (iter->short_name == short_name)
@@ -263,13 +191,7 @@ namespace coc {
         }
         return false;
     }
-    inline std::vector<Option *> Options::get_list() {
-        return this->options_u;
-    }
 
-    inline void Values::addValue(std::string_view name, std::string_view val_log, std::string_view type, std::string_view intro, std::string_view def_val) {
-        this->values.push_back(new Values::Value{name, val_log, type, intro, def_val});
-    }
     void Values::run() {
         /*
             * in this step complete:
@@ -303,45 +225,7 @@ namespace coc {
             p = nullptr;
         }
     }
-    inline std::vector<Values::Value *> &Values::get_values() {
-        return this->values;
-    }
-    template<>
-    inline int Values::get<int>(const std::string &name) {
-        return stoi(this->values_u[name]);
-    }
-    template<>
-    inline float Values::get<float>(const std::string &name) {
-        return stof(this->values_u[name]);
-    }
-    template<>
-    inline double Values::get<double>(const std::string &name) {
-        return stod(this->values_u[name]);
-    }
-    template<>
-    inline char Values::get<char>(const std::string &name) {
-        return this->values_u[name][0];
-    }
-    template<>
-    inline bool Values::get<bool>(const std::string &name) {
-        std::string &buff = this->values_u[name];
-        if (buff == "FALSE" || buff == "False" || buff == "false" || buff == "0")
-            return false;
-        else
-            return true;
-    }
-    template<>
-    inline std::string Values::get<std::string>(const std::string &name) {
-        return this->values_u[name];
-    }
-    template<>
-    inline const char *Values::get<const char *>(const std::string &name) {
-        return this->values_u[name].c_str();
-    }
 
-    inline void Arguments::addArgument(std::string_view _name, std::string_view _type, std::string_view _intro) {
-        this->arguments[_name] = new Argument{_type, _intro};
-    }
     void Arguments::run(std::string_view argv) {
         /*
             * in this step complete:
@@ -379,79 +263,12 @@ namespace coc {
             p.second = nullptr;
         }
     }
-    inline std::unordered_map<std::string_view, Arguments::Argument *> &Arguments::get_arguments_map() {
-        return this->arguments;
-    }
-    template<>
-    inline int Arguments::get<int>(const std::string &name, int default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        return stoi(p->second);
-    }
-    template<>
-    inline float Arguments::get<float>(const std::string &name, float default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        return stof(p->second);
-    }
-    template<>
-    inline double Arguments::get<double>(const std::string &name, double default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        return stod(p->second);
-    }
-    template<>
-    inline char Arguments::get<char>(const std::string &name, char default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        return p->second[0];
-    }
-    template<>
-    inline bool Arguments::get<bool>(const std::string &name, bool default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        if (p->second == "FALSE" || p->second == "False" || p->second == "false" || p->second == "0")
-            return false;
-        else
-            return true;
-    }
-    template<>
-    inline std::string Arguments::get<std::string>(const std::string &name, std::string default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        return p->second;
-    }
-    template<>
-    inline const char *Arguments::get<const char *>(const std::string &name, const char *default_) {
-        auto p = this->arguments_u.find(name);
-        if (p == this->arguments_u.end())
-            return default_;
-        return p->second.c_str();
-    }
 
     Getter::Getter(Values *values) : is_empty(true), opt(nullptr), val(values), arg(nullptr) {}
     Getter::Getter(Options *options, Values *values, Arguments *arguments) : opt(options), val(values), arg(arguments) {}
-    inline Options *Getter::get_opt() { return this->opt; }
-    inline Values *Getter::get_val() { return this->val; }
-    inline Arguments *Getter::get_arg() { return this->arg; }
-    inline Targets *Getter::get_tar() { return this->opt->targets; }
 
     ActionFun coc_empty = [](Getter) { return; };
 
-    inline IAction *IAction::addOption(std::string_view _name, std::string_view _intro, int _num, char _s_name) {
-        this->options->addOption(_name, _intro, _num, _s_name);
-        return this;
-    }
-    inline IAction *IAction::addValue(std::string_view _name, std::string_view _log, std::string_view _type, std::string_view _intro, std::string_view _def_val) {
-        this->values->addValue(_name, _log, _type, _intro, _def_val);
-        return this;
-    }
     IAction::IAction(coc::Options *options, coc::Values *values, char short_cut, coc::ParserConfig *config, coc::IParserLog *log) : options(options), values(values), short_cut(short_cut) {
         this->options->config = config;
         this->options->log = log;
@@ -461,15 +278,6 @@ namespace coc {
 
     IHelpFunc::IHelpFunc(ParserConfig *config, Parser *parser) : config(config), parser(parser) {}
 
-    inline void HelpAction::run() {
-        this->values->run();
-        this->hf->run(Getter(this->values));
-    }
-    inline void HelpAction::run(std::list<std::string_view> &opt_tar, coc::Arguments *arguments) {
-        this->options->run(opt_tar);
-        this->values->run();
-        this->hf->run(Getter(this->options, this->values, arguments));
-    }
     HelpAction::HelpAction(std::string_view intro, coc::IHelpFunc *hf, char short_cut, coc::ParserConfig *config, coc::IParserLog *log) : IAction(new Options(), new Values(), short_cut, config, log) {
         this->intro = intro;
         this->hf = hf;
@@ -478,31 +286,7 @@ namespace coc {
         delete this->hf;
         hf = nullptr;
     }
-    inline std::string_view HelpAction::get_intro() {
-        return this->intro;
-    }
 
-    inline void AAction::run() {
-        this->values->run();
-        this->af(Getter(this->values));
-    }
-    inline void AAction::run(std::list<std::string_view> &opt_tar, Arguments *arguments) {
-        /*
-            * in this step complete:
-            * do nothing,only call function
-            */
-
-        /*
-             * after that
-             * call options' run()
-             * call values' run()
-             */
-
-        this->options->run(opt_tar);
-        this->values->run();
-        this->af(Getter(this->options, this->values, arguments));
-    }
-    inline std::string_view AAction::get_intro() { return std::string_view{"null"}; }
     AAction::AAction(const ActionFun &af, char short_cut, ParserConfig *config, IParserLog *log) : IAction(new Options(), new Values(), short_cut, config, log) {
         this->af = af;
     }
@@ -513,9 +297,6 @@ namespace coc {
         this->values = nullptr;
     }
 
-    inline std::string_view Action::get_intro() {
-        return this->intro;
-    }
     Action::Action(std::string_view intro, const ActionFun &af, char short_cut, ParserConfig *config, IParserLog *log) : AAction(af, short_cut, config, log) {
         this->intro = intro;
     }
@@ -583,22 +364,6 @@ namespace coc {
         delete this->global;
         this->global = nullptr;
     }
-    inline IAction *Actions::addAction(std::string_view _name, std::string_view _intro, const ActionFun &_af, char _short_cut) {
-        auto action = new Action(_intro, _af, _short_cut, this->config, this->log);
-        this->actions[_name] = action;
-        return action;
-    }
-    inline IAction *Actions::addHelpAction(std::string_view _name, std::string_view _intro, IHelpFunc *_hf, char _short_cut) {
-        auto *action = new HelpAction(_intro, _hf, _short_cut, this->config, this->log);
-        this->actions[_name] = action;
-        return action;
-    }
-    inline std::unordered_map<std::string_view, IAction *> &Actions::get_actions_map() {
-        return this->actions;
-    }
-    inline GlobalAction *Actions::get_global_action() {
-        return this->global;
-    }
 
     Parser::Parser(ParserConfig *config, IParserLog *log) : config(config), log(log) {
         this->arguments = new Arguments;
@@ -632,34 +397,7 @@ namespace coc {
         delete this->config;
         this->config = _config;
     }
-    inline IAction *Parser::addAction(std::string_view _name, std::string_view _intro, const ActionFun &_af, char _short_cut) {
-        return this->actions->addAction(_name, _intro, _af, _short_cut);
-    }
-    inline IAction *Parser::addHelpAction(std::string_view _name, std::string_view _intro, IHelpFunc *_hf, char _short_cut) {
-        return this->actions->addHelpAction(_name, _intro, _hf, _short_cut);
-    }
-    inline Parser *Parser::addArgument(std::string_view _name, std::string_view _type, std::string_view _intro) {
-        this->arguments->addArgument(_name, _type, _intro);
-        return this;
-    }
-    inline ParserConfig *Parser::get_config() {
-        return this->config;
-    }
-    inline IParserLog *Parser::get_log() {
-        return this->log;
-    }
-    inline IAction *Parser::set_global_action(const ActionFun &_af) {
-        if (this->actions->global == nullptr)
-            this->actions->global = new GlobalAction(_af, COC_NULL_CHAR, this->config, this->log);
-        return this->actions->global;
-    }
-    inline Arguments *Parser::get_argument() {
-        return this->arguments;
-    }
-    inline Actions *Parser::get_actions() {
-        return this->actions;
-    }
-    int Parser::run(int argc, char **argv) {
+   int Parser::run(int argc, char **argv) {
         /*
              * in this step complete:
              * Analysis of argv except opt_tar and arguments
