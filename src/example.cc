@@ -1,10 +1,10 @@
-import coc;
+#include "coc/coc.hpp"
 #include <iostream>
-
 using namespace coc;
 using namespace std;
 
 void action1(Getter g){
+
     cout<<"option test:\n";
     cout<<g.get_opt()->at(0)<<'\n';
     cout<<g.get_opt()->getOption('o')<<'\n';
@@ -12,6 +12,7 @@ void action1(Getter g){
     for(auto iter:g.get_opt()->get_list()){
         cout<<iter->name<<'\n';
     }
+
 }
 void action2(Getter g){
     cout<<"value test:\n";
@@ -39,9 +40,9 @@ int main(int argc ,char**argv){
     parser.addAction("action3","this is a action",action3)
             ->addOption("fseparator","this is a separator",1,'f')
             ->addOption("sseparator","this is a separator",1,'s');
-    parser.set_global_actions([](Getter g){
-        cout<<"global and argument:\n";
-        cout<<g.get_arg()->getString("arg","default argument");
+    parser.set_global_action([](Getter g) {
+        cout << "global and argument:\n";
+        cout << g.get_arg()->get<std::string>("arg", "default argument");
     });
     parser.addArgument("arg","string","this is a arg");
 

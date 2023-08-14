@@ -35,7 +35,7 @@ void action3(Getter g){
 
 int main(int argc ,char**argv){
     auto config=new ParserConfig;
-    auto log=new ParserLog;
+    auto log=new IParserLog;
     Parser parser=Parser(config,log);
     parser.addAction("action1","this is a action",action1,'a')
             ->addOption("option","this is a option",1,'o')
@@ -46,7 +46,7 @@ int main(int argc ,char**argv){
     parser.addAction("action3","this is a action",action3)
             ->addOption("fseparator","this is a separator",1,'f')
             ->addOption("sseparator","this is a separator",1,'s');
-    parser.set_global_actions([](Getter g){
+    parser.set_global_action([](Getter g){
         cout<<"global and argument:\n";
         cout<<g.get_arg()->getString("arg","default argument");
     });
@@ -69,20 +69,20 @@ You'd better create coc::Parser object on stack,because coc can't collect it by 
 ......
 int main(int argc,char** argv){
     auto config=new coc::ParserConfig;
-    auto log=new coc::ParserLog;
+    auto log=new coc::IParserLog;
     coc::Parser parser=new coc::Parser(config,log);
     int return_value = parser.run(argc,argv);
     delete parser;
     return return_value;
 }
 ```
-Another problem is ParserConfig and ParserLog object will be collected by Parser,include this situation:
+Another problem is ParserConfig and IParserLog object will be collected by Parser,include this situation:
 ```cpp
 ......
 parser.loadConfig(new coc::ParserConfig);
 ......
 ```
-old coc::ParserConfig will be collected at once,the new object will be collected when the Parser object be collected.(loadLog(ParserLog*) and defaultConfig(void) are same)
+old coc::ParserConfig will be collected at once,the new object will be collected when the Parser object be collected.(loadLog(IParserLog*) and defaultConfig(void) are same)
 ### Order
 In [example.cc](./src/example.cc),we can call all of it are "config code" except `parser.run(argc,argv);`.Therefore,although you exchange some lines,you can get same effect,such as:
 ```cpp

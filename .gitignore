@@ -7,10 +7,15 @@
 **/.vs/
 **/.vscode/
 **/.cache/
+#忽略目标文件
 target/
+#忽略生成的构建文件
 compile_commands.json
-CMakeLists.txt
 CMkaeSettings.json
+#忽略特定后缀文件
 **.pdb
 **.exe
-./out/
+**.dll
+**.so
+**.lib
+**.a
