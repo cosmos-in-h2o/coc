@@ -1,0 +1,3 @@
+D:/Program/coc/VS2022-module/CMakeFiles/coc.dir
+D:/Program/coc/VS2022-module/CMakeFiles/ALL_BUILD.dir
+D:/Program/coc/VS2022-module/CMakeFiles/ZERO_CHECK.dir
