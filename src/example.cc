@@ -16,8 +16,8 @@ void action1(Getter g){
 }
 void action2(Getter g){
     cout<<"value test:\n";
-    cout<<g.get_val()->getString("value1")<<'\n';
-    cout<<g.get_val()->getInt("value2")<<'\n';
+    cout<<g.get_val()->get<std::string>("value1")<<'\n';
+    cout<<g.get_val()->get<int>("value2")<<'\n';
 }
 void action3(Getter g){
     cout<<"target test:\n";
@@ -29,7 +29,7 @@ void action3(Getter g){
 
 int main(int argc ,char**argv){
     auto config=new ParserConfig;
-    auto log=new ParserLog;
+    auto log=new PrefabParserLog;
     Parser parser=Parser(config,log);
     parser.addAction("action1","this is a action",action1,'a')
             ->addOption("option","this is a option",1,'o')
