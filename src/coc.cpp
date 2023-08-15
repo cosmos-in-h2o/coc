@@ -392,14 +392,16 @@ namespace coc {
 #define COC_IS_COMMON
         bool is_common;
         COC_ERROR_INIT
-        //optimize
+        //optimize when empty
         if (this->actions->global != nullptr) {
-            is_common = this->actions->havaAction(argv[1]);
-            if (argc == 1 && !is_common) {
+            if(argc==1){
                 COC_IS_GLOBAL
                 this->actions->global->run();
                 return error_list->invoke();
-            } else if (argc == 2 && is_common) {
+            }else{
+                is_common = this->actions->havaAction(argv[1]);
+            }
+            if (argc == 2 && is_common) {
                 COC_IS_COMMON
                 this->actions->run(argv[1]);
                 return error_list->invoke();
