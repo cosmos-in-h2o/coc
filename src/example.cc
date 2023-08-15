@@ -43,11 +43,12 @@ int main(int argc ,char**argv){
     parser.set_global_action([](Getter g) {
         if(g.is_empty){
             std::cout<<"empty";
-            return;
         }
         cout << "global and argument:\n";
-        cout << g.get_arg()->get<std::string>("arg", "default argument");
-    });
+        cout << g.get_arg()->get<std::string>("arg", "default argument")<<std::endl;
+        cout<<g.get_arg()->get<std::string>("arg","aaa")<<endl;
+        cout<<g.get_val()->get<std::string>("value1");
+    })->addValue("value1","value","","","value");
     parser.addArgument("arg","string","this is a arg");
 
     return parser.run(argc,argv);
