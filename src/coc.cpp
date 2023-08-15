@@ -28,6 +28,31 @@ namespace coc {
     }
     ErrorList *ErrorList::single = nullptr;
 
+    void PrefabParserLog::unidentifiedArgument(std::string_view argument) {
+        std::cout << "Error:Unidentified argument:" << argument << ".\n";
+    }
+    void PrefabParserLog::unidentifiedOption(std::string_view option) {
+        std::cout << "Error:Unidentified option:--" << option << ".\n";
+    }
+    void PrefabParserLog::unidentifiedOption(char option) {
+        std::cout << "Error:Unidentified option:-" << option << ".\n";
+    }
+    void PrefabParserLog::noValueEntered(std::string_view value) {
+        std::cout << "Error:Value: " << value << " not assigned.\n";
+    }
+    void PrefabParserLog::notFoundAction(std::string_view action) {
+        std::cout << "Error:Not found action:" << action << ".\n";
+    }
+    void PrefabParserLog::valueLog(std::string_view value_log, std::string_view default_value) {
+        if (!default_value.empty())
+            std::cout << value_log << "(default=" << default_value << "):\n";
+        else
+            std::cout << value_log << ":\n";
+    }
+    void PrefabParserLog::globalActionNotDoesNotExist() {
+        std::cout << "Error:Global action doesn't exist.\n";
+    }
+
     void Targets::run(std::string_view target) {
         if (this->targets_list.empty())
             this->first->target_list.push_back(target);
@@ -242,7 +267,7 @@ namespace coc {
         }
     }
 
-    Getter::Getter(Values *values,Arguments*arguments) : is_empty(true), opt(nullptr), val(values), arg(arguments) {}
+    Getter::Getter(Values *values, Arguments *arguments) : is_empty(true), opt(nullptr), val(values), arg(arguments) {}
     Getter::Getter(Options *options, Values *values, Arguments *arguments) : opt(options), val(values), arg(arguments) {}
 
     ActionFun coc_empty = [](Getter) { return; };
@@ -292,7 +317,7 @@ namespace coc {
             return false;
         return true;
     }
-    void Actions::run(const std::string &action_name,Arguments*arguments) {
+    void Actions::run(const std::string &action_name, Arguments *arguments) {
         COC_ERROR_INIT
         if (action_name.size() == 1) {
             for (auto &[k, v]: this->actions) {
@@ -375,7 +400,7 @@ namespace coc {
         delete this->config;
         this->config = _config;
     }
-   int Parser::run(int argc, char **argv) {
+    int Parser::run(int argc, char **argv) {
         /*
              * in this step complete:
              * Analysis of argv except opt_tar and arguments
@@ -394,22 +419,22 @@ namespace coc {
         COC_ERROR_INIT
         //optimize when empty
         if (this->actions->global != nullptr) {
-            if(argc==1){
+            if (argc == 1) {
                 COC_IS_GLOBAL
                 this->actions->global->run(this->arguments);
                 return error_list->invoke();
-            }else{
+            } else {
                 is_common = this->actions->havaAction(argv[1]);
             }
             if (argc == 2 && is_common) {
                 COC_IS_COMMON
-                this->actions->run(argv[1],this->arguments);
+                this->actions->run(argv[1], this->arguments);
                 return error_list->invoke();
             }
         } else {
             COC_IS_COMMON
             if (argc == 2) {
-                this->actions->run(argv[1],this->arguments);
+                this->actions->run(argv[1], this->arguments);
                 return error_list->invoke();
             }
             is_common = true;

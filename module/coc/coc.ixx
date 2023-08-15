@@ -15,7 +15,18 @@ export module coc;
 #define COC_NULL_CHAR '\0'
 
 namespace coc {
-    struct ErrorList {
+    export struct ParserConfig;
+    export struct IParserLog;
+    export struct PrefabParserLog;
+    export struct Getter;
+    export struct IAction;
+    export struct IHelpFunc;
+    export class Actions;
+    export class Parser;
+    export struct PrintComponent;
+    export struct PrefabHelpFunc;
+
+   struct ErrorList {
     private:
         using error = std::function<void(void)>;
         std::list<error> error_list;
@@ -31,7 +42,7 @@ namespace coc {
         ~ErrorList() = default;
     };
 
-    export struct ParserConfig {
+    struct ParserConfig {
         bool intellisense_mode = true;//not supported now
         bool argument_need_extern = true;
         std::string logo_and_version =
@@ -48,7 +59,7 @@ namespace coc {
         char argument_mark = 'D';//-[argument_mark] mark as argument
     };
 
-    export struct IParserLog {
+    struct IParserLog {
         virtual ~IParserLog() = default;
         virtual void unidentifiedArgument(std::string_view argument) = 0;
         virtual void unidentifiedOption(std::string_view option) = 0;
@@ -59,32 +70,15 @@ namespace coc {
         virtual void globalActionNotDoesNotExist() = 0;
     };
 
-    export struct PrefabParserLog : public IParserLog {
+    struct PrefabParserLog : public IParserLog {
         ~PrefabParserLog() override = default;
-        inline void unidentifiedArgument(std::string_view argument) override {
-            std::cout << "Error:Unidentified argument:" << argument << ".\n";
-        }
-        inline void unidentifiedOption(std::string_view option) override {
-            std::cout << "Error:Unidentified option:--" << option << ".\n";
-        }
-        inline void unidentifiedOption(char option) override {
-            std::cout << "Error:Unidentified option:-" << option << ".\n";
-        }
-        inline void noValueEntered(std::string_view value) override {
-            std::cout << "Error:Value: " << value << " not assigned.\n";
-        }
-        inline void notFoundAction(std::string_view action) override {
-            std::cout << "Error:Not found action:" << action << ".\n";
-        }
-        inline void valueLog(std::string_view value_log, std::string_view default_value) override {
-            if (!default_value.empty())
-                std::cout << value_log << "(default=" << default_value << "):\n";
-            else
-                std::cout << value_log << ":\n";
-        }
-        inline void globalActionNotDoesNotExist() override {
-            std::cout << "Error:Global action doesn't exist.\n";
-        }
+        void unidentifiedArgument(std::string_view argument) override ;
+        void unidentifiedOption(std::string_view option) override ;
+        void unidentifiedOption(char option) override ;
+        void noValueEntered(std::string_view value) override ;
+        void notFoundAction(std::string_view action) override;
+        void valueLog(std::string_view value_log, std::string_view default_value) override ;
+        void globalActionNotDoesNotExist() override;
     };
 
     struct Option {
@@ -351,14 +345,14 @@ namespace coc {
         }
     };
 
-    export struct Getter {
+    struct Getter {
     private:
         Options *opt;
         Values *val;
         Arguments *arg;
 
     public:
-        Getter(Values *values,Arguments*arguments);
+        Getter(Values *values,Arguments* arguments);
         Getter(Options *options, Values *values, Arguments *arguments);
         bool is_empty = false;
         inline Options *get_opt() { return this->opt; }
@@ -369,15 +363,14 @@ namespace coc {
 
     //Action function pointer
     export using ActionFun = std::function<void(Getter)>;
-
     export extern ActionFun coc_empty;
 
     //Action interface
-    export struct IAction {
+    struct IAction {
         friend class Actions;
 
     protected:
-        virtual void run(coc::Arguments* arguments) = 0;
+        virtual void run(coc::Arguments *arguments) = 0;
         virtual void run(std::list<std::string_view> &opt_tar, Arguments *arguments) = 0;
 
     public:
@@ -401,7 +394,7 @@ namespace coc {
         virtual ~IAction() = default;
     };
 
-    export struct IHelpFunc {
+    struct IHelpFunc {
         ParserConfig *config;
         Parser *parser;
         virtual void run(Getter g) = 0;
@@ -413,9 +406,9 @@ namespace coc {
     private:
         std::string_view intro;
         IHelpFunc *hf;
-        inline void run(Arguments*arguments) override {
+        inline void run(coc::Arguments *arguments) override {
             this->values->run();
-            this->hf->run(Getter(this->values,arguments));
+            this->hf->run(Getter(this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, coc::Arguments *arguments) override {
             this->options->run(opt_tar);
@@ -439,9 +432,9 @@ namespace coc {
         ActionFun af;
 
     private:
-        inline void run(coc::Arguments*arguments) override {
+        inline void run(Arguments *arguments) override {
             this->values->run();
-            this->af(Getter(this->values,arguments));
+            this->af(Getter(this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, Arguments *arguments) override {
             /*
@@ -486,7 +479,7 @@ namespace coc {
         Action(std::string_view intro, const ActionFun &af, char short_cut, ParserConfig *config, IParserLog *log);
     };
 
-    export class Actions {
+    class Actions {
         friend class Parser;
 
     private:
@@ -496,7 +489,7 @@ namespace coc {
         std::unordered_map<std::string_view, IAction *> actions;
 
         bool havaAction(const std::string &_name);
-        void run(const std::string &action_name,coc::Arguments *arguments);
+        void run(const std::string &action_name, coc::Arguments *arguments);
         void run(const std::string &action_name, std::list<std::string_view> &opt_tar, Arguments *arguments);
 
     public:
@@ -521,7 +514,7 @@ namespace coc {
         }
     };
 
-    export class Parser {
+    class Parser {
     private:
         ParserConfig *config;
         IParserLog *log;
@@ -571,7 +564,7 @@ namespace coc {
         int run(int argc, char **argv);
     };
 
-    export struct PrintComponent {
+    struct PrintComponent {
         static void printBasicMessage(ParserConfig *_config);
         static void printOptions(Options *_options);
         static void printValues(Values *_values);
@@ -580,7 +573,7 @@ namespace coc {
         static void printArguments(Parser *_parser);
     };
 
-    export struct PrefabHelpFunc : public IHelpFunc {
+    struct PrefabHelpFunc : public IHelpFunc {
         void run(Getter g) override;
         PrefabHelpFunc(ParserConfig *config, Parser *parser);
     };

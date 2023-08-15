@@ -59,30 +59,13 @@ namespace coc {
 
     struct PrefabParserLog : public IParserLog {
         ~PrefabParserLog() override = default;
-        inline void unidentifiedArgument(std::string_view argument) override {
-            std::cout << "Error:Unidentified argument:" << argument << ".\n";
-        }
-        inline void unidentifiedOption(std::string_view option) override {
-            std::cout << "Error:Unidentified option:--" << option << ".\n";
-        }
-        inline void unidentifiedOption(char option) override {
-            std::cout << "Error:Unidentified option:-" << option << ".\n";
-        }
-        inline void noValueEntered(std::string_view value) override {
-            std::cout << "Error:Value: " << value << " not assigned.\n";
-        }
-        inline void notFoundAction(std::string_view action) override {
-            std::cout << "Error:Not found action:" << action << ".\n";
-        }
-        inline void valueLog(std::string_view value_log, std::string_view default_value) override {
-            if (!default_value.empty())
-                std::cout << value_log << "(default=" << default_value << "):\n";
-            else
-                std::cout << value_log << ":\n";
-        }
-        inline void globalActionNotDoesNotExist() override {
-            std::cout << "Error:Global action doesn't exist.\n";
-        }
+        void unidentifiedArgument(std::string_view argument) override ;
+        void unidentifiedOption(std::string_view option) override ;
+        void unidentifiedOption(char option) override ;
+        void noValueEntered(std::string_view value) override ;
+        void notFoundAction(std::string_view action) override;
+        void valueLog(std::string_view value_log, std::string_view default_value) override ;
+        void globalActionNotDoesNotExist() override;
     };
 
     struct Option {
