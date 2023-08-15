@@ -1,0 +1,5 @@
+target("coc")
+set_languages("c++20")
+set_kind("static")
+add_files("module/coc/coc.ixx")
+add_files("src/coc.cc")
