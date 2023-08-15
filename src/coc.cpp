@@ -292,13 +292,13 @@ namespace coc {
             return false;
         return true;
     }
-    void Actions::run(const std::string &action_name) {
+    void Actions::run(const std::string &action_name,Arguments*arguments) {
         COC_ERROR_INIT
         if (action_name.size() == 1) {
             for (auto &[k, v]: this->actions) {
                 //if it has shortcut and the action name equal to shortcut
                 if (v->short_cut != COC_NULL_CHAR && action_name[0] == v->short_cut) {
-                    return v->run();
+                    return v->run(arguments);
                 }
             }
         }
@@ -306,7 +306,7 @@ namespace coc {
         if (p == this->actions.end()) {
             return error_list->add([=, this] { this->log->notFoundAction(action_name); });
         }
-        p->second->run();
+        p->second->run(arguments);
     }
     void Actions::run(const std::string &action_name, std::list<std::string_view> &opt_tar, Arguments *arguments) {
         /*
@@ -396,20 +396,20 @@ namespace coc {
         if (this->actions->global != nullptr) {
             if(argc==1){
                 COC_IS_GLOBAL
-                this->actions->global->run();
+                this->actions->global->run(this->arguments);
                 return error_list->invoke();
             }else{
                 is_common = this->actions->havaAction(argv[1]);
             }
             if (argc == 2 && is_common) {
                 COC_IS_COMMON
-                this->actions->run(argv[1]);
+                this->actions->run(argv[1],this->arguments);
                 return error_list->invoke();
             }
         } else {
             COC_IS_COMMON
             if (argc == 2) {
-                this->actions->run(argv[1]);
+                this->actions->run(argv[1],this->arguments);
                 return error_list->invoke();
             }
             is_common = true;

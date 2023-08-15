@@ -104,7 +104,7 @@ namespace coc {
         };
         Target *first;
         std::vector<Target *> targets_list;
-        inline void run(Option *opt){
+        inline void run(Option *opt) {
             this->targets_list.push_back(new Target(opt));
         }
         void run(std::string_view target);
@@ -283,7 +283,7 @@ namespace coc {
         Arguments();
         ~Arguments();
 
-        inline std::unordered_map<std::string_view, Argument *> &get_arguments_map(){
+        inline std::unordered_map<std::string_view, Argument *> &get_arguments_map() {
             return this->arguments;
         }
         template<typename T>
@@ -375,7 +375,7 @@ namespace coc {
         friend class Actions;
 
     protected:
-        virtual void run() = 0;
+        virtual void run(coc::Arguments *arguments) = 0;
         virtual void run(std::list<std::string_view> &opt_tar, Arguments *arguments) = 0;
 
     public:
@@ -411,9 +411,9 @@ namespace coc {
     private:
         std::string_view intro;
         IHelpFunc *hf;
-        inline void run() override {
+        inline void run(coc::Arguments *arguments) override {
             this->values->run();
-            this->hf->run(Getter(this->values));
+            this->hf->run(Getter(nullptr, this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, coc::Arguments *arguments) override {
             this->options->run(opt_tar);
@@ -437,9 +437,9 @@ namespace coc {
         ActionFun af;
 
     private:
-        inline void run() override {
+        inline void run(Arguments *arguments) override {
             this->values->run();
-            this->af(Getter(this->values));
+            this->af(Getter(nullptr, this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, Arguments *arguments) override {
             /*
@@ -494,7 +494,7 @@ namespace coc {
         std::unordered_map<std::string_view, IAction *> actions;
 
         bool havaAction(const std::string &_name);
-        void run(const std::string &action_name);
+        void run(const std::string &action_name, coc::Arguments *arguments);
         void run(const std::string &action_name, std::list<std::string_view> &opt_tar, Arguments *arguments);
 
     public:
