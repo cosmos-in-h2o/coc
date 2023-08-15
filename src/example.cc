@@ -41,6 +41,10 @@ int main(int argc ,char**argv){
             ->addOption("fseparator","this is a separator",1,'f')
             ->addOption("sseparator","this is a separator",1,'s');
     parser.set_global_action([](Getter g) {
+        if(g.is_empty){
+            std::cout<<"empty";
+            return;
+        }
         cout << "global and argument:\n";
         cout << g.get_arg()->get<std::string>("arg", "default argument");
     });
