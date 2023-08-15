@@ -356,7 +356,7 @@ namespace coc {
         Arguments *arg;
 
     public:
-        explicit Getter(Values *values);
+        Getter(Values *values,Arguments* arguments);
         Getter(Options *options, Values *values, Arguments *arguments);
         bool is_empty = false;
         inline Options *get_opt() { return this->opt; }
@@ -413,7 +413,7 @@ namespace coc {
         IHelpFunc *hf;
         inline void run(coc::Arguments *arguments) override {
             this->values->run();
-            this->hf->run(Getter(nullptr, this->values, arguments));
+            this->hf->run(Getter(this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, coc::Arguments *arguments) override {
             this->options->run(opt_tar);
@@ -439,7 +439,7 @@ namespace coc {
     private:
         inline void run(Arguments *arguments) override {
             this->values->run();
-            this->af(Getter(nullptr, this->values, arguments));
+            this->af(Getter(this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, Arguments *arguments) override {
             /*

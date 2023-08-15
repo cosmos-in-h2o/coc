@@ -242,7 +242,7 @@ namespace coc {
         }
     }
 
-    Getter::Getter(Values *values) : is_empty(true), opt(nullptr), val(values), arg(nullptr) {}
+    Getter::Getter(Values *values,Arguments*arguments) : is_empty(true), opt(nullptr), val(values), arg(arguments) {}
     Getter::Getter(Options *options, Values *values, Arguments *arguments) : opt(options), val(values), arg(arguments) {}
 
     ActionFun coc_empty = [](Getter) { return; };
