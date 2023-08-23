@@ -1,4 +1,5 @@
 # coc
+a cmd parser library for c++
 [video](https://www.bilibili.com/video/BV1Ej411B7Wb/)
 ## log
 ### v1.0.0
@@ -9,7 +10,6 @@
 ### v1.2.0
 - fix large bugs.
 - different classes are divided into different files.
-## a cmd parser library for c++
 ## Overview 
 [example.cc](example/example.cc):
 ```c++
