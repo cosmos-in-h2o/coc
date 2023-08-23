@@ -59,12 +59,12 @@ namespace coc {
 
     struct PrefabParserLog : public IParserLog {
         ~PrefabParserLog() override = default;
-        void unidentifiedArgument(std::string_view argument) override ;
-        void unidentifiedOption(std::string_view option) override ;
-        void unidentifiedOption(char option) override ;
-        void noValueEntered(std::string_view value) override ;
+        void unidentifiedArgument(std::string_view argument) override;
+        void unidentifiedOption(std::string_view option) override;
+        void unidentifiedOption(char option) override;
+        void noValueEntered(std::string_view value) override;
         void notFoundAction(std::string_view action) override;
-        void valueLog(std::string_view value_log, std::string_view default_value) override ;
+        void valueLog(std::string_view value_log, std::string_view default_value) override;
         void globalActionNotDoesNotExist() override;
     };
 
@@ -185,49 +185,74 @@ namespace coc {
         struct Value {
             std::string_view value_name, value_log, value_type, intro, default_value;
         };
-        std::vector<Value *> values;
+        std::unordered_map<std::string_view, Value *> values;
         std::unordered_map<std::string_view, std::string> values_u;
         ParserConfig *config;
         IParserLog *log;
 
         //add a value to list
         inline void addValue(std::string_view name, std::string_view val_log, std::string_view type, std::string_view intro, std::string_view def_val) {
-            this->values.push_back(new Values::Value{name, val_log, type, intro, def_val});
+            this->values[name] = new Values::Value{name, val_log, type, intro, def_val};
         }
         //put run and get value that user input
-        void run();
+        void run(std::string_view name);
+        decltype(values_u.begin()) at(std::string_view name);
 
     public:
         Values();
         ~Values();
-        inline std::vector<Value *> &get_values() {
+        inline std::unordered_map<std::string_view, Value *> &get_values() {
             return this->values;
         }
 
         template<typename T>
         inline T get(const std::string &name) {
-            return T(this->values_u[name]);
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return T{};
+            }
+            return T(iter->second);
         }
         //the first is value.if the second is false,it means that the value was not found
         template<>
         inline int get<int>(const std::string &name) {
-            return stoi(this->values_u[name]);
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return int{};
+            }
+            return stoi(iter->second);
         }
         template<>
         inline float get<float>(const std::string &name) {
-            return stof(this->values_u[name]);
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return float{};
+            }
+            return stof(iter->second);
         }
         template<>
         inline double get<double>(const std::string &name) {
-            return stod(this->values_u[name]);
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return double{};
+            }
+            return stod(iter->second);
         }
         template<>
         inline char get<char>(const std::string &name) {
-            return this->values_u[name][0];
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return char{};
+            }
+            return iter->second[0];
         }
         template<>
         inline bool get<bool>(const std::string &name) {
-            std::string &buff = this->values_u[name];
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return bool{};
+            }
+            std::string_view buff = iter->second;
             if (buff == "FALSE" || buff == "False" || buff == "false" || buff == "0")
                 return false;
             else
@@ -235,11 +260,19 @@ namespace coc {
         }
         template<>
         inline std::string get<std::string>(const std::string &name) {
-            return this->values_u[name];
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return std::string{};
+            }
+            return iter->second;
         }
         template<>
         inline const char *get<const char *>(const std::string &name) {
-            return this->values_u[name].c_str();
+            auto iter = this->at(name);
+            if (iter == this->values_u.end()) {
+                return nullptr;
+            }
+            return iter->second.c_str();
         }
     };
 
@@ -339,7 +372,7 @@ namespace coc {
         Arguments *arg;
 
     public:
-        Getter(Values *values,Arguments* arguments);
+        Getter(Values *values, Arguments *arguments);
         Getter(Options *options, Values *values, Arguments *arguments);
         bool is_empty = false;
         inline Options *get_opt() { return this->opt; }
@@ -395,12 +428,10 @@ namespace coc {
         std::string_view intro;
         IHelpFunc *hf;
         inline void run(coc::Arguments *arguments) override {
-            this->values->run();
             this->hf->run(Getter(this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, coc::Arguments *arguments) override {
             this->options->run(opt_tar);
-            this->values->run();
             this->hf->run(Getter(this->options, this->values, arguments));
         }
 
@@ -421,7 +452,6 @@ namespace coc {
 
     private:
         inline void run(Arguments *arguments) override {
-            this->values->run();
             this->af(Getter(this->values, arguments));
         }
         inline void run(std::list<std::string_view> &opt_tar, Arguments *arguments) override {
@@ -433,11 +463,9 @@ namespace coc {
             /*
              * after that
              * call options' run()
-             * call values' run()
              */
 
             this->options->run(opt_tar);
-            this->values->run();
             this->af(Getter(this->options, this->values, arguments));
         }
 
@@ -509,6 +537,7 @@ namespace coc {
         bool is_def_hp = true;//if open default function
         Actions *actions;
         Arguments *arguments;
+        void empty();
 
     public:
         Parser(ParserConfig *config, IParserLog *log);
