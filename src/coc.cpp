@@ -280,8 +280,14 @@ namespace coc {
         }
     }
 
-    Getter::Getter(Values *values, Arguments *arguments) : is_empty(true), opt(nullptr), val(values), arg(arguments) {}
+    Getter::Getter(Values *values, Arguments *arguments) : is_empty(true), opt(new Options{}), val(values), arg(arguments) {}
     Getter::Getter(Options *options, Values *values, Arguments *arguments) : opt(options), val(values), arg(arguments) {}
+    Getter::~Getter() {
+        if (is_empty) {
+            delete this->opt;
+            this->opt = nullptr;
+        }
+    }
 
     ActionFun coc_empty = [](Getter) { return; };
 

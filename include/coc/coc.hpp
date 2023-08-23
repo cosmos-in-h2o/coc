@@ -379,6 +379,7 @@ namespace coc {
         inline Values *get_val() { return this->val; }
         inline Arguments *get_arg() { return this->arg; }
         inline Targets *get_tar() { return this->opt->targets; }
+        ~Getter();
     };
 
     //Action function pointer
