@@ -26,6 +26,15 @@ void action3(Getter g) {
     cout << g.get_tar()->atOutOfRange("sseparator", 2, "default target");
 }
 
+void test(Getter g){
+    if(g.get_opt()->getOption('o')){
+        std::cout<<"true";
+    }else{
+        std::cout<<"false";
+    }
+    std::cout<<"default";
+}
+
 int main(int argc, char **argv) {
     auto config = new ParserConfig;
     auto log = new PrefabParserLog;
@@ -39,6 +48,9 @@ int main(int argc, char **argv) {
     parser.addAction("action3", "this is a action", action3)
             ->addOption("fseparator", "this is a separator", 1, 'f')
             ->addOption("sseparator", "this is a separator", 1, 's');
+    parser.addAction("test","",test,'t')
+            ->addOption("option","",1,'o')
+            ->addValue("value","please enter value","string","","value");
     parser.set_global_action([](Getter g) {
               if (g.is_empty) {
                   std::cout << "empty";
