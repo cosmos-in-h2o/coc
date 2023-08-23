@@ -1,5 +1,5 @@
 # coc
-a cmd parser library for c++
+a cmd parser library for c++\
 [video](https://www.bilibili.com/video/BV1Ej411B7Wb/)
 ## log
 ### v1.0.0
