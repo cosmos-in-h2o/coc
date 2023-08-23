@@ -8,7 +8,7 @@
 ## **V 1.0.0**
 ## a cmd parser library for c++
 ## Overview 
-[example.cc](./src/example.cc):
+[example.cc](example/example.cc):
 ```c++
 import coc;
 #include <iostream>
@@ -89,7 +89,7 @@ parser.loadConfig(new coc::ParserConfig);
 ```
 old coc::ParserConfig will be collected at once,the new object will be collected when the Parser object be collected.(loadLog(IParserLog*) and defaultConfig(void) are same)
 ### Order
-In [example.cc](./src/example.cc),we can call all of it are "config code" except `parser.run(argc,argv);`.Therefore,although you exchange some lines,you can get same effect,such as:
+In [example.cc](example/example.cc),we can call all of it are "config code" except `parser.run(argc,argv);`.Therefore,although you exchange some lines,you can get same effect,such as:
 ```cpp
 ......
 ActionFun action=[](Getter g){};
